@@ -8,19 +8,40 @@ import {
   SafeAreaView,
   Pressable,
 } from 'react-native';
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import supabase from '../../config/supabaseClient';
+import {useAuth} from '../providers/AuthProvider';
 
 const LoginScreen = ({navigation}) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const {localSessionActive, setLocalSessionActive} = useAuth();
+
+  async function CheckUserSession() {
+    const {data, error} = await supabase.auth.getSession();
+    if (data.session !== null) {
+      navigation.navigate('Landing');
+    }
+  }
+
+  useEffect(() => {
+    CheckUserSession();
+  }, []);
+
+  async function SessionDetails() {
+    console.log('Hello');
+    const {data, error} = await supabase.auth.getSession();
+    console.log('Details', data, error);
+    supabase.auth.onAuthStateChange((event, session) => {
+      console.log('Event', event, 'Session', session);
+    });
+  }
 
   async function handleLogin() {
     const {data, error} = await supabase.auth.signInWithPassword({
       email: email,
       password: password,
     });
-    console.log(data, error);
     if (error !== null) {
       console.log(error);
       ToastAndroid.showWithGravity(
@@ -31,12 +52,14 @@ const LoginScreen = ({navigation}) => {
       return;
     }
     console.log(data);
-    navigation.navigate('Home');
+    setEmail('');
+    setPassword('');
+    setLocalSessionActive(true);
+    navigation.navigate('Landing');
   }
   return (
     <SafeAreaView style={styles.mainContainer}>
-
-    <Text style={{fontSize:20}}>Login</Text>
+      <Text style={{fontSize: 20}}>Login</Text>
       <TextInput
         placeholder={'Email'}
         style={styles.input}
@@ -54,8 +77,12 @@ const LoginScreen = ({navigation}) => {
       <TouchableOpacity style={styles.button} onPress={() => handleLogin()}>
         <Text style={[styles.loginBtnText]}>Login</Text>
       </TouchableOpacity>
-      <Pressable onPress={()=>navigation.navigate('Sign Up')}>
+      <Pressable onPress={() => navigation.navigate('Sign Up')}>
         <Text>Click here for sign up</Text>
+      </Pressable>
+
+      <Pressable onPress={SessionDetails}>
+        <Text>SessionDetails</Text>
       </Pressable>
     </SafeAreaView>
   );

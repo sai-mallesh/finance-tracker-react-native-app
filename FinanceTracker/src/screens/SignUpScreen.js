@@ -30,6 +30,8 @@ export default function SignUpScreen({navigation}) {
       return;
     }
     console.log(data);
+    setEmail('');
+    setPassword('');
     navigation.navigate('Home');
   }
 
