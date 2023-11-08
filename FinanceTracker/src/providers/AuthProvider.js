@@ -8,7 +8,6 @@ export const AuthProvider = ({children}) => {
   const [localSessionActive, setLocalSessionActive] = useState(false);
 
   async function authEvent() {
-    console.log('Hello');
     try {
       supabase.auth.onAuthStateChange((event, session) => {
         console.log('Event', event, 'Session', session);

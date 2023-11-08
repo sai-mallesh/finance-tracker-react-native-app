@@ -4,129 +4,127 @@ import {
   Text,
   View,
   Pressable,
-  Alert,
-  TextInput,
-  ScrollView,
-  TouchableOpacity,
+  ToastAndroid,
+  SafeAreaView,
 } from 'react-native';
-import React, {useEffect, useState} from 'react';
-import {useAuth} from '../providers/AuthProvider';
+import React from 'react';
 import supabase from '../../config/supabaseClient';
-import Voice from '@react-native-voice/voice';
+import Icon from 'react-native-vector-icons/FontAwesome';
 
 const LandingScreen = ({navigation}) => {
-  const [startState, setStartState] = useState('');
-  const [endState, setEndState] = useState('');
-  const [result, setResult] = useState([]);
-
-  useEffect(() => {
-    Voice.onSpeechStart = onSpeechStart;
-    Voice.onSpeechEnd = onSpeechEnd;
-    Voice.onSpeechResults = onSpeechResults;
-    return () => {
-      Voice.destroy().then(Voice.removeAllListeners);
-    };
-  }, []);
-
-  const onSpeechStart = e => {
-    console.log(e);
-    setStartState('Started');
-  };
-
-  const onSpeechEnd = e => {
-    console.log(e);
-    setEndState('Stopped');
-  };
-
-  const onSpeechResults = e => {
-    console.log(e);
-    setResult(e.value);
-  };
-
-  async function signOut() {
+  const handleSignout = async () => {
     const {error} = await supabase.auth.signOut();
     if (error) {
-      console.log(error);
+      ToastAndroid.showWithGravity(
+        error.message,
+        ToastAndroid.SHORT,
+        ToastAndroid.CENTER,
+      );
       return;
     }
+    ToastAndroid.showWithGravity(
+      'Logged Out',
+      ToastAndroid.SHORT,
+      ToastAndroid.CENTER,
+    );
     navigation.navigate('Login');
-  }
-
-  async function SessionDetails() {
-    console.log('Hello');
-    const {data, error} = await supabase.auth.getSession();
-    console.log('Details', data, error);
-    const s = supabase.auth.onAuthStateChange((event, session) => {
-      console.log(event, session);
-    });
-  }
-
-  const startRecognization = async () => {
-    try {
-      await Voice.start('en-US');
-      setStartState('');
-      setEndState('');
-      setResult([]);
-    } catch (error) {
-      console.log(error);
-    }
   };
-
-  const stopRecognization = async () => {
-    try {
-      await Voice.stop();
-      await Voice.destroy();
-      setStartState('');
-      setEndState('');
-      setResult([]);
-    } catch (error) {
-      console.log(error);
-    }
-  };
-
   return (
-    <View>
-      {/* <Pressable onPress={signOut}>
-        <Text>Sign Out</Text>
-      </Pressable>
-      <Pressable onPress={SessionDetails}>
-        <Text>SessionDetails</Text>
-      </Pressable>
-      <Pressable
-        onPress={() => {
-          navigation.navigate('Home');
-        }}>
-        <Text>Go to Home Screen</Text>
-      </Pressable> */}
-      
-      <TouchableOpacity
-        style={{alignSelf: 'center', marginTop: 50}}
-        onPress={() => startRecognization()}>
-        <Text style={{fontSize: 20}}>Press to Start</Text>
-      </TouchableOpacity>
-      <View
-        style={{
-          flexDirection: 'row',
-          marginTop: 50,
-          justifyContent: 'space-evenly',
-        }}>
-        <Text>{startState}</Text>
-        <Text>{endState}</Text>
+    <SafeAreaView style={styles.mainContainer}>
+      <View style={styles.contentContainer}>
+        <Pressable
+          onPress={handleSignout}
+          style={styles.signOutButton}>
+          <Text style={styles.signOutButtonText}>Sign Out</Text>
+        </Pressable>
+        <View style={styles.buttonsSectionContainer}>
+          <View style={styles.button}>
+            <Pressable onPress={() => navigation.navigate('SpeechToText')}>
+            <View style={styles.buttonContent}>
+            <Icon name="language" size={30} color="#ffffff" />
+              <Text style={styles.buttontText}>Speech to Text</Text>
+            </View>
+            </Pressable>
+          </View>
+          <View View style={styles.button}>
+            <Pressable onPress={() => navigation.navigate('Home')}>
+            <View style={styles.buttonContent}>
+            <Icon name="list" size={30} color="#ffffff" />
+              <Text style={styles.buttontText}>List View</Text>
+            </View>
+            </Pressable>
+          </View>
+        </View>
+        <View style={styles.buttonsSectionContainer}>
+          <View style={styles.button}>
+            <Pressable onPress={() => navigation.navigate('Feedback')}>
+            <View style={styles.buttonContent}>
+            <Icon name="comment" size={30} color="#ffffff" />
+              <Text style={styles.buttontText}>User Feedback</Text>
+            </View>
+            </Pressable>
+          </View>
+        </View>
       </View>
-      <TouchableOpacity
-        style={{alignSelf: 'center', marginTop: 50}}
-        onPress={() => stopRecognization()}>
-        <Text style={{fontSize: 20}}>Press to Stop</Text>
-      </TouchableOpacity>
-      <ScrollView>
-        {result.map((item,i) => {
-          return <View key={i}><Text>{item}</Text></View>;
-        })}
-      </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 };
 
 export default LandingScreen;
 
-const styles = StyleSheet.create({});
+const styles = StyleSheet.create({
+  mainContainer: {
+    flex: 1,
+    backgroundColor: '#151515',
+  },
+  contentContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 10,
+  },
+  buttonsSectionContainer: {
+    justifyContent: 'center',
+    flexDirection: 'row',
+    width: '100%',
+    height: '40%',
+    marginVertical: 10,
+    marginHorizontal:10,
+  },
+  signOutButton:{
+    height: 40,
+    borderRadius: 15,
+    alignSelf:'flex-end',
+    marginRight: 10,
+    width: '45%',
+    backgroundColor: '#0E8388',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 10,
+  },
+  button: {
+    justifyContent: 'center',
+    flexDirection: 'row',
+    backgroundColor: '#A7D397',
+    padding: 30,
+    height: '100%',
+    width: '45%',
+    marginHorizontal: 10,
+    borderRadius: 20,
+  },
+  buttonContent:{
+    marginTop:'75%',
+    alignItems:'center',
+    justifyContent:'center',
+  },
+  buttontText: {
+    fontSize: 20,
+    alignItems: 'center',
+    textAlign: 'center',
+    justifyContent: 'center',
+    color: '#ffffff',
+  },
+  signOutButtonText:{
+    fontSize:15, 
+    fontWeight:'bold',
+  },
+});

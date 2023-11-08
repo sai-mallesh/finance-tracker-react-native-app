@@ -7,6 +7,7 @@ import {
   SafeAreaView,
   ToastAndroid,
   Pressable,
+  View,
 } from 'react-native';
 import React, {useState} from 'react';
 import supabase from '../../config/supabaseClient';
@@ -32,62 +33,87 @@ export default function SignUpScreen({navigation}) {
     console.log(data);
     setEmail('');
     setPassword('');
-    navigation.navigate('Home');
+    navigation.navigate('Landing');
   }
 
   return (
     <SafeAreaView style={styles.mainContainer}>
-      <Text style={{fontSize: 20}}>Sign Up</Text>
-      <TextInput
-        placeholder={'Email'}
-        style={styles.input}
-        value={email}
-        onChangeText={setEmail}
-      />
-      <TextInput
-        placeholder={'Password'}
-        secureTextEntry={true}
-        autoCorrect={false}
-        style={styles.input}
-        value={password}
-        onChangeText={setPassword}
-      />
-      <TouchableOpacity style={styles.button} onPress={() => handleSignUp()}>
-        <Text style={[styles.loginBtnText]}>Sign Up</Text>
-      </TouchableOpacity>
-      <Pressable onPress={() => navigation.navigate('Login')}>
-        <Text>Click here for login</Text>
-      </Pressable>
+      <View style={styles.contentContainer}>
+        <Text style={styles.headerText}>Sign Up</Text>
+        <TextInput
+          placeholder={'Email'}
+          placeholderTextColor="#EEEDED"
+          style={styles.input}
+          value={email}
+          onChangeText={setEmail}
+        />
+        <TextInput
+          placeholder={'Password'}
+          placeholderTextColor="#EEEDED"
+          secureTextEntry={true}
+          autoCorrect={false}
+          style={styles.input}
+          value={password}
+          onChangeText={setPassword}
+        />
+        <TouchableOpacity style={styles.button} onPress={() => handleSignUp()}>
+          <Text style={[styles.loginBtnText]}>Sign Up</Text>
+        </TouchableOpacity>
+        <Pressable onPress={() => navigation.navigate('Login')}>
+          <Text style={styles.loginText}>Click here for login</Text>
+        </Pressable>
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   mainContainer: {
+    flex: 1,
+    backgroundColor: '#151515',
+  },
+  contentContainer:{
+    marginVertical:'50%',
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: '50%',
+  },
+  headerText:{
+    fontSize:30,
+    color:'#ffffff',
+    fontWeight:'bold',
+    marginBottom: 10,
   },
   input: {
-    height: 50,
+    height: 40,
     width: '90%',
-    borderWidth: 2,
+    borderWidth: 1,
     marginVertical: 10,
     borderRadius: 15,
     padding: 10,
+    color: '#fff',
+    backgroundColor: '#363636',
+    borderColor: '#0E8388',
   },
 
   button: {
-    height: 50,
+    height: 40,
     borderRadius: 15,
     width: 200,
-    backgroundColor: 'green',
+    backgroundColor: '#0E8388',
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop:10,
   },
 
   loginBtnText: {
     fontSize: 15,
+    fontWeight:'bold',
     margin: 0,
+  },
+
+  loginText:{
+    marginTop:30,
+    fontSize:15,
+    color:'#ffffff',
   },
 });
