@@ -8,10 +8,10 @@ import {
   ScrollView,
   Modal,
   TextInput,
-  ToastAndroid,
 } from 'react-native';
 import React, {useEffect, useState} from 'react';
 import supabase from '../../config/supabaseClient';
+import {makeToastMessage} from '../Utils';
 
 const FeedbackScreen = () => {
   const [feedbackData, setFeedbackData] = useState([]);
@@ -42,19 +42,11 @@ const FeedbackScreen = () => {
     setFeedbackData([...feedbackData, formData]);
     const {status} = await supabase.from('feedback').insert(formData);
     if (status === 201) {
-      ToastAndroid.showWithGravity(
-        'Thank you for your feedback.',
-        ToastAndroid.LONG,
-        ToastAndroid.CENTER,
-      );
+      makeToastMessage('Thank you for your feedback.');
       setCounter(counter + 1);
       return;
     }
-    ToastAndroid.showWithGravity(
-      'There was an error',
-      ToastAndroid.LONG,
-      ToastAndroid.CENTER,
-    );
+    makeToastMessage('There was an error');
   };
   return (
     <SafeAreaView style={styles.mainContainer}>
@@ -82,11 +74,7 @@ const FeedbackScreen = () => {
                 style={[styles.button, styles.buttonClose]}
                 onPress={() => {
                   if (userFeedback === '') {
-                    ToastAndroid.showWithGravity(
-                      'Please enter the feedback.',
-                      ToastAndroid.LONG,
-                      ToastAndroid.CENTER,
-                    );
+                    makeToastMessage('Please enter the feedback.');
                     return;
                   }
                   addFeedback();
@@ -226,7 +214,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 10,
     color: '#000000',
-    backgroundColor: '#fffff',
+    backgroundColor: '#ffffff',
     borderColor: '#0E8388',
   },
   feedbackInput: {

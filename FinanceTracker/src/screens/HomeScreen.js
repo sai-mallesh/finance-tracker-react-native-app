@@ -7,41 +7,68 @@ import {
   Text,
   Pressable,
   View,
-  ToastAndroid,
   ScrollView,
   Modal,
 } from 'react-native';
 import supabase from '../../config/supabaseClient';
 import Icon from 'react-native-vector-icons/FontAwesome';
+import {generateRandomId, makeToastMessage} from '../Utils';
+import {useAuth} from '../providers/AuthProvider';
+import {useAsyncStorageData} from '../providers/AsyncStorageDataProvider';
 
 const HomeScreen = () => {
   const [dbData, setDbData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [count, setCount] = useState(0);
-  const [modalVisible, setModalVisible] = useState(true);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [inputText, setInputText] = useState('');
+  const [userId, setUserId] = useState();
+  const [userType, setUserType] = useState();
+
+  const {getUserData} = useAuth();
+  const {
+    checkNetworkConnectivity,
+    getData,
+    setData,
+    updateData,
+    addToRequestQueue,
+  } = useAsyncStorageData();
 
   async function fetchData() {
-    const {data, error} = await supabase.from('records_table').select('*');
-    if (error) {
-      console.error('Error fetching data:', error.message);
-    } else {
-      console.log('Fetched data:', data);
-      setDbData(data);
-      setCount(dbData.length + 1);
+    const userIdTemp = await getUserData('userId');
+    const userTypeTemp = await getUserData('userType');
+    setUserType(userTypeTemp);
+    const isConnected = await checkNetworkConnectivity();
+    if (isConnected && userTypeTemp === 'hybrid') {
+      setUserId(userIdTemp);
+      const {data, error} = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', userIdTemp);
+      if (error) {
+        console.error('Error fetching data:', error.message);
+      } else {
+        setDbData(data);
+        await setData('transactions', data);
+      }
+      return;
+    }
+    try {
+      const existingLocalData = await getData('transactions');
+      if (existingLocalData === null) {
+        await setData('transactions', []);
+        setDbData([]);
+        return;
+      }
+      setDbData(existingLocalData);
+    } catch (e) {
+      makeToastMessage(e);
     }
   }
+
   useEffect(() => {
     fetchData();
     setLoading(false);
-  }, [dbData]);
-
-  const toastError = () => {
-    ToastAndroid.showWithGravity(
-      'There was an error',
-      ToastAndroid.SHORT,
-      ToastAndroid.CENTER,
-    );
-  };
+  }, []);
 
   const elementExists = element => {
     var hasMatch = false;
@@ -56,79 +83,129 @@ const HomeScreen = () => {
   };
 
   const addRecord = async (record, amount) => {
-    const {status} = await supabase
-      .from('records_table')
-      .insert({record: record, amount: amount});
-    if (status === 201) {
-      ToastAndroid.showWithGravity(
-        'Added Item',
-        ToastAndroid.SHORT,
-        ToastAndroid.CENTER,
-      );
-      setDbData([...dbData, {id: count, record: record, amount: amount}]);
-      setCount(count + 1);
+    const isConnected = await checkNetworkConnectivity();
+    const recordToSave = {
+      id: generateRandomId(),
+      record: record,
+      amount: amount,
+    };
+    if (isConnected && userType === 'hybrid') {
+      const {status} = await supabase.from('transactions').insert({
+        user_id: userId,
+        record: record,
+        amount: amount,
+        last_updated: new Date().toISOString(),
+      });
+      if (status === 201) {
+        const updatedData = await updateData(
+          'transactions',
+          recordToSave,
+          'add',
+        );
+        setDbData(updatedData);
+        return;
+      }
+      makeToastMessage('There was an error');
       return;
+    } else if (!isConnected && userType === 'hybrid') {
+      await addToRequestQueue({
+        requestType: 'add',
+        record: record,
+        amount: amount,
+        last_updated: new Date().toISOString(),
+      });
+      const temp1 = await getData('requestQueue');
+      makeToastMessage(JSON.stringify(temp1));
     }
-    console.log(status);
-    toastError();
-    return;
+    const updatedData = await updateData('transactions', recordToSave, 'add');
+    setDbData(updatedData);
   };
 
   const removeRecord = async itemToRemove => {
     if (elementExists(itemToRemove)) {
-      const {status} = await supabase
-        .from('records_table')
-        .delete()
-        .eq('record', itemToRemove);
-      if (status === 204) {
-        ToastAndroid.showWithGravity(
-          'Removed Item ' + itemToRemove,
-          ToastAndroid.SHORT,
-          ToastAndroid.CENTER,
-        );
-        setDbData(dbData.filter(item => item.record !== itemToRemove));
+      const isConnected = await checkNetworkConnectivity();
+      if (isConnected && userType === 'hybrid') {
+        const {status} = await supabase
+          .from('transactions')
+          .delete()
+          .eq('user_id', userId)
+          .eq('record', itemToRemove);
+        if (status === 204) {
+          const updatedData = await updateData(
+            'transactions',
+            itemToRemove,
+            'remove',
+          );
+          setDbData(updatedData);
+          return;
+        }
+        console.log(status);
+        makeToastMessage('There was an error');
         return;
+      } else if (!isConnected && userType === 'hybrid') {
+        await addToRequestQueue({
+          requestType: 'remove',
+          record: itemToRemove,
+          last_updated: new Date().toISOString(),
+        });
       }
-      console.log(status);
-      toastError();
+      const updatedData = await updateData(
+        'transactions',
+        itemToRemove,
+        'remove',
+      );
+      setDbData(updatedData);
       return;
     }
-    ToastAndroid.showWithGravity(
-      'Item not found',
-      ToastAndroid.SHORT,
-      ToastAndroid.CENTER,
-    );
+    makeToastMessage('Item not found');
   };
 
   const modifyRecord = async (itemToModiy, newValue) => {
     if (elementExists(itemToModiy)) {
-      var index = dbData.findIndex(element => element.record === itemToModiy);
-      dbData[index].quantity = newValue;
-      setDbData(dbData);
-      const {status} = await supabase
-        .from('records_table')
-        .update({amount: newValue})
-        .eq('record', itemToModiy);
-      if (status === 204) {
-        ToastAndroid.showWithGravity(
-          'Modified Item ' + itemToModiy,
-          ToastAndroid.SHORT,
-          ToastAndroid.CENTER,
-        );
+      const isConnected = await checkNetworkConnectivity();
+      if (isConnected && userType === 'hybrid') {
+        const {status} = await supabase
+          .from('transactions')
+          .update({amount: newValue})
+          .eq('user_id', userId)
+          .eq('record', itemToModiy);
+        if (status === 204) {
+          makeToastMessage('Modified Item ' + itemToModiy);
+          const updatedData = await updateData(
+            'transactions',
+            {record: itemToModiy, amount: newValue},
+            'modify',
+          );
+          setDbData(updatedData);
+          return;
+        }
+        console.log(status);
+        makeToastMessage('There was an error');
         return;
+      } else if (!isConnected && userType === 'hybrid') {
+        await addToRequestQueue({
+          requestType: 'add',
+          record: itemToModiy,
+          amount: newValue,
+          last_updated: new Date().toISOString(),
+        });
       }
-      console.log(status);
-      toastError();
+      const updatedData = await updateData(
+        'transactions',
+        {record: itemToModiy, amount: newValue},
+        'modify',
+      );
+      setDbData(updatedData);
       return;
     }
-    ToastAndroid.showWithGravity(
-      'Item not found',
-      ToastAndroid.SHORT,
-      ToastAndroid.CENTER,
-    );
+    makeToastMessage('Item not found');
   };
 
-  const [inputText, setInputText] = useState('');
+  const handleSyncData = async () => {
+    const pendingRequests = await getData('requestQueue');
+    makeToastMessage(JSON.stringify(pendingRequests));
+  };
+
   return (
     <SafeAreaView style={styles.mainContainer}>
       <View style={styles.centeredView}>
@@ -175,7 +252,7 @@ const HomeScreen = () => {
           </Pressable>
           <TextInput
             onChangeText={setInputText}
-            placeholder='Enter the command...'
+            placeholder="Enter the command..."
             placeholderTextColor="#EEEDED"
             value={inputText}
             style={styles.textInput}
@@ -192,20 +269,32 @@ const HomeScreen = () => {
                 var inputTextSplit = inputText.split(' ');
                 switch (inputTextSplit[0].toLowerCase()) {
                   case 'add':
-                    addRecord(inputTextSplit[1], inputTextSplit[2]);
+                    var recordText = inputTextSplit.slice(1, -1).join(' ');
+                    var amount = parseFloat(
+                      inputTextSplit[inputTextSplit.length - 1],
+                    );
+                    typeof amount === 'number'
+                      ? addRecord(recordText, amount)
+                      : makeToastMessage('Amount should be a number');
                     break;
                   case 'remove':
-                    removeRecord(inputTextSplit[1]);
+                    var recordText = inputTextSplit.slice(1).join(' ');
+                    removeRecord(recordText);
                     break;
                   case 'modify':
-                    modifyRecord(inputTextSplit[1], inputTextSplit[2]);
+                    var recordText = inputTextSplit.slice(1, -1).join(' ');
+                    var newAmount = parseFloat(
+                      inputTextSplit[inputTextSplit.length - 1],
+                    );
+                    typeof newAmount === 'number'
+                      ? modifyRecord(recordText, newAmount)
+                      : makeToastMessage('Amount should be a number');
+                    break;
+                  case 'sync_data':
+                    handleSyncData();
                     break;
                   default:
-                    ToastAndroid.showWithGravity(
-                      'Invalid Command',
-                      ToastAndroid.SHORT,
-                      ToastAndroid.CENTER,
-                    );
+                    makeToastMessage('Invalid Command');
                     break;
                 }
 
@@ -298,7 +387,7 @@ const styles = StyleSheet.create({
   modalCommands: {
     fontSize: 15,
     marginVertical: 5,
-    color:'black',
+    color: 'black',
   },
   inputContainer: {
     flexDirection: 'row',

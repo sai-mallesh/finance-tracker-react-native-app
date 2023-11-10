@@ -3,36 +3,61 @@ import {
   StyleSheet,
   Text,
   View,
-  ToastAndroid,
   TextInput,
   TouchableOpacity,
   SafeAreaView,
   Pressable,
 } from 'react-native';
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import supabase from '../../config/supabaseClient';
+import {useAuth} from '../providers/AuthProvider';
+import {generateRandomId, makeToastMessage} from '../Utils';
+import {useAsyncStorageData} from '../providers/AsyncStorageDataProvider';
 
 const LoginScreen = ({navigation}) => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('demo@demo.com');
+  const [password, setPassword] = useState('123456');
+  const {getUserSession, setUserSession, setUserData} = useAuth();
+  const {checkNetworkConnectivity,setData} = useAsyncStorageData();
+
+  async function changeScreenIfSessionExists() {
+    var temp = await getUserSession();
+    if (temp !== null) {
+      navigation.navigate('Landing');
+    }
+  }
+
+  useEffect(() => {
+    changeScreenIfSessionExists();
+  }, []);
 
   async function handleLogin() {
-    const {data, error} = await supabase.auth.signInWithPassword({
-      email: email,
-      password: password,
-    });
-    if (error !== null) {
-      console.log(error);
-      ToastAndroid.showWithGravity(
-        error.message,
-        ToastAndroid.LONG,
-        ToastAndroid.CENTER,
-      );
-      return;
+    const isConnected = await checkNetworkConnectivity();
+    if (isConnected) {
+      const {data, error} = await supabase.auth.signInWithPassword({
+        email: email,
+        password: password,
+      });
+      if (error !== null) {
+        console.log(error);
+        makeToastMessage(error.message);
+        return;
+      }
+      console.log(data);
+      setEmail('');
+      setPassword('');
+      await setUserSession(data);
+      await setData('requestQueue',[]);
+      await setUserData('userType', 'hybrid');
+      navigation.navigate('Landing');
+    } else {
+      makeToastMessage('You are not connected to internet.');
     }
-    console.log(data);
-    setEmail('');
-    setPassword('');
+  }
+
+  async function handleSkipLogin() {
+    setUserSession(generateRandomId());
+    setUserData('userType', 'local');
     navigation.navigate('Landing');
   }
   return (
@@ -65,6 +90,12 @@ const LoginScreen = ({navigation}) => {
         <Text style={styles.signUpText}>
           Use email : demo@demo.com / password : 123456
         </Text>
+
+        <TouchableOpacity
+          style={[styles.button, styles.skipLoginButton]}
+          onPress={() => handleSkipLogin()}>
+          <Text style={[styles.loginBtnText]}>Skip Login</Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -120,5 +151,9 @@ const styles = StyleSheet.create({
     marginTop: 30,
     fontSize: 15,
     color: '#ffffff',
+  },
+
+  skipLoginButton: {
+    marginTop: 40,
   },
 });

@@ -1,32 +1,79 @@
 /* eslint-disable prettier/prettier */
-import React, {useState, useEffect, createContext, useContext} from 'react';
-import {supabase} from '../../config/supabaseClient';
+import React, {createContext, useContext} from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import supabase from '../../config/supabaseClient';
+import {makeToastMessage} from '../Utils';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({children}) => {
-  const [localSessionActive, setLocalSessionActive] = useState(false);
-
-  async function authEvent() {
+  const getUserData = async key => {
     try {
-      supabase.auth.onAuthStateChange((event, session) => {
-        console.log('Event', event, 'Session', session);
-      });
-    } catch (error) {
-      console.log(error);
+      const userId = await AsyncStorage.getItem(key);
+      return userId != null ? userId : null;
+    } catch (e) {
+      console.log(e);
     }
-  }
+  };
 
-  useEffect(() => {
-    authEvent();
-  }, []);
+  const setUserData = async (key, value) => {
+    try {
+      await AsyncStorage.setItem(key, value);
+    } catch (e) {
+      console.log(e);
+    }
+  };
+
+  const getUserSession = async () => {
+    try {
+      const jsonValue = await AsyncStorage.getItem('userSession');
+      return jsonValue != null ? JSON.parse(jsonValue) : null;
+    } catch (e) {
+      console.log(e);
+    }
+  };
+
+  const setUserSession = async value => {
+    try {
+      const jsonValue = JSON.stringify(value);
+      await AsyncStorage.setItem('userSession', jsonValue);
+      try {
+        await setUserData('userId', value != null ? value.user.id : '');
+      } catch {
+        await setUserData('userId', value);
+      }
+    } catch (e) {
+      console.log(e);
+    }
+  };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try{
+    const {error} = await supabase.auth.signOut();
+    if (error) {
+      makeToastMessage(error.message);
+      return;
+    }
+    makeToastMessage('Logged Out');
+    await AsyncStorage.removeItem('userSession');
+    await AsyncStorage.removeItem('transactions');
+    await AsyncStorage.removeItem('userId');
+    await AsyncStorage.removeItem('requestQueue');}
+    catch (e){
+      console.log(e);
+      makeToastMessage(e);
+    }
   };
 
   return (
-    <AuthContext.Provider value={{localSessionActive, setLocalSessionActive}}>
+    <AuthContext.Provider
+      value={{
+        getUserSession,
+        setUserSession,
+        getUserData,
+        setUserData,
+        signOut,
+      }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1739,6 +1739,11 @@
     prompts "^2.4.0"
     semver "^7.5.2"
 
+"@react-native-community/netinfo@^11.0.1":
+  version "11.0.1"
+  resolved "https://registry.npmjs.org/@react-native-community/netinfo/-/netinfo-11.0.1.tgz"
+  integrity sha512-OqOzDNyFq2u4CYOFv0zwzJdHPPIwX0h4WfFZimdeRIVtwuLk7ZgxeAMuujOe/HXnEjpfXNYVxjM5wgjsxMxqzg==
+
 "@react-native-voice/voice@^3.2.4":
   version "3.2.4"
   resolved "https://registry.npmjs.org/@react-native-voice/voice/-/voice-3.2.4.tgz"
@@ -5896,7 +5901,7 @@ react-native-vector-icons@^10.0.1:
     prop-types "^15.7.2"
     yargs "^16.1.1"
 
-react-native@*, "react-native@^0.0.0-0 || 0.60 - 0.72 || 1000.0.0", "react-native@>= 0.60.2", react-native@0.72.6:
+react-native@*, "react-native@^0.0.0-0 || 0.60 - 0.72 || 1000.0.0", "react-native@>= 0.60.2", react-native@>=0.59, react-native@0.72.6:
   version "0.72.6"
   resolved "https://registry.npmjs.org/react-native/-/react-native-0.72.6.tgz"
   integrity sha512-RafPY2gM7mcrFySS8TL8x+TIO3q7oAlHpzEmC7Im6pmXni6n1AuufGaVh0Narbr1daxstw7yW7T9BKW5dpVc2A==

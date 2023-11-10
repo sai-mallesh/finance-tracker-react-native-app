@@ -4,29 +4,17 @@ import {
   Text,
   View,
   Pressable,
-  ToastAndroid,
   SafeAreaView,
 } from 'react-native';
 import React from 'react';
-import supabase from '../../config/supabaseClient';
 import Icon from 'react-native-vector-icons/FontAwesome';
+import {useAuth} from '../providers/AuthProvider';
 
 const LandingScreen = ({navigation}) => {
+  const {signOut} = useAuth();
+
   const handleSignout = async () => {
-    const {error} = await supabase.auth.signOut();
-    if (error) {
-      ToastAndroid.showWithGravity(
-        error.message,
-        ToastAndroid.SHORT,
-        ToastAndroid.CENTER,
-      );
-      return;
-    }
-    ToastAndroid.showWithGravity(
-      'Logged Out',
-      ToastAndroid.SHORT,
-      ToastAndroid.CENTER,
-    );
+    await signOut();
     navigation.navigate('Login');
   };
   return (
@@ -124,7 +112,7 @@ const styles = StyleSheet.create({
     color: '#ffffff',
   },
   signOutButtonText:{
-    fontSize:15, 
+    fontSize:15,
     fontWeight:'bold',
   },
 });

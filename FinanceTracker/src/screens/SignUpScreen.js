@@ -5,34 +5,49 @@ import {
   TextInput,
   TouchableOpacity,
   SafeAreaView,
-  ToastAndroid,
   Pressable,
   View,
 } from 'react-native';
 import React, {useState} from 'react';
 import supabase from '../../config/supabaseClient';
+import {useAuth} from '../providers/AuthProvider';
+import {makeToastMessage, generateRandomId} from '../Utils';
+import {useAsyncStorageData} from '../providers/AsyncStorageDataProvider';
 
 export default function SignUpScreen({navigation}) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const {setUserSession, setUserData} = useAuth();
+  const {checkNetworkConnectivity, setData} =
+    useAsyncStorageData();
 
   async function handleSignUp() {
-    const {data, error} = await supabase.auth.signUp({
-      email: email,
-      password: password,
-    });
-    if (error !== null) {
-      console.log(error);
-      ToastAndroid.showWithGravity(
-        error.message,
-        ToastAndroid.LONG,
-        ToastAndroid.CENTER,
-      );
-      return;
+    const isConnected = await checkNetworkConnectivity();
+    if (isConnected) {
+      const {data, error} = await supabase.auth.signUp({
+        email: email,
+        password: password,
+      });
+      if (error !== null) {
+        console.log(error);
+        makeToastMessage(error.message);
+        return;
+      }
+      console.log(data);
+      setEmail('');
+      setPassword('');
+      await setUserSession(data);
+      await setData('requestQueue',[]);
+      await setUserData('userType', 'hybrid');
+      navigation.navigate('Landing');
+    } else {
+      makeToastMessage('You are not connected to internet.');
     }
-    console.log(data);
-    setEmail('');
-    setPassword('');
+  }
+
+  async function handleSkipLogin() {
+    setUserSession(generateRandomId());
+    setUserData('userType', 'local');
     navigation.navigate('Landing');
   }
 
@@ -62,6 +77,12 @@ export default function SignUpScreen({navigation}) {
         <Pressable onPress={() => navigation.navigate('Login')}>
           <Text style={styles.loginText}>Click here for login</Text>
         </Pressable>
+
+        <TouchableOpacity
+          style={[styles.button, styles.skipSignUpButton]}
+          onPress={() => handleSkipLogin()}>
+          <Text style={[styles.loginBtnText]}>Skip Login</Text>
+        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -72,15 +93,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#151515',
   },
-  contentContainer:{
-    marginVertical:'50%',
+  contentContainer: {
+    marginVertical: '50%',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerText:{
-    fontSize:30,
-    color:'#ffffff',
-    fontWeight:'bold',
+  headerText: {
+    fontSize: 30,
+    color: '#ffffff',
+    fontWeight: 'bold',
     marginBottom: 10,
   },
   input: {
@@ -102,18 +123,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#0E8388',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop:10,
+    marginTop: 10,
   },
 
   loginBtnText: {
     fontSize: 15,
-    fontWeight:'bold',
+    fontWeight: 'bold',
     margin: 0,
   },
 
-  loginText:{
-    marginTop:30,
-    fontSize:15,
-    color:'#ffffff',
+  loginText: {
+    marginTop: 30,
+    fontSize: 15,
+    color: '#ffffff',
+  },
+  skipSignUpButton: {
+    marginTop: 40,
   },
 });
