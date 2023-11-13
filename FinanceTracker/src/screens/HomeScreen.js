@@ -12,7 +12,14 @@ import {
 } from 'react-native';
 import supabase from '../../config/supabaseClient';
 import Icon from 'react-native-vector-icons/FontAwesome';
-import {generateRandomId, makeToastMessage} from '../Utils';
+import {
+  generateRandomId,
+  makeToastMessage,
+  addRecordDB,
+  removeRecordDB,
+  updateRecordDB,
+  getDataDB,
+} from '../Utils';
 import {useAuth} from '../providers/AuthProvider';
 import {useAsyncStorageData} from '../providers/AsyncStorageDataProvider';
 
@@ -36,37 +43,81 @@ const HomeScreen = () => {
   async function fetchData() {
     const userIdTemp = await getUserData('userId');
     const userTypeTemp = await getUserData('userType');
+    const localTransLastUpdated = await getData('localTransactionsLastUpdated');
     setUserType(userTypeTemp);
     const isConnected = await checkNetworkConnectivity();
     if (isConnected && userTypeTemp === 'hybrid') {
       setUserId(userIdTemp);
-      const {data, error} = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('user_id', userIdTemp);
-      if (error) {
-        console.error('Error fetching data:', error.message);
-      } else {
-        setDbData(data);
-        await setData('transactions', data);
-      }
-      return;
-    }
-    try {
-      const existingLocalData = await getData('transactions');
-      if (existingLocalData === null) {
-        await setData('transactions', []);
-        setDbData([]);
+      const lastRefreshed = await getDataDB(
+        'user_data_last_refreshed',
+        userIdTemp,
+      );
+      if (lastRefreshed.error) {
+        console.log(lastRefreshed.error);
         return;
       }
-      setDbData(existingLocalData);
-    } catch (e) {
-      makeToastMessage(e);
+      const dbUpdatedTimestamp = lastRefreshed.data[0].last_updated_timestamp;
+      const timestampDB = new Date(dbUpdatedTimestamp);
+      const timestampLocal = new Date(localTransLastUpdated);
+      if (timestampDB > timestampLocal) {
+        const responseData = await getDataDB('transactions', userIdTemp);
+        if (responseData.error) {
+          console.error('Error fetching data:', responseData.error.message);
+        } else {
+          setDbData(responseData.data);
+          await setData('transactions', responseData.data);
+        }
+      } else if (timestampDB < timestampLocal) {
+        console.log('Local data needs to be synced');
+        const temp = await getData('transactions');
+        if (temp === null) {
+          const {data, error} = await getDataDB('transactions', userIdTemp);
+          if (error) {
+            console.error('Error fetching data:', error.message);
+          } else {
+            setDbData(data);
+            await setData('transactions', data);
+          }
+          return;
+        }
+        setDbData(temp);
+        handleSyncData(userIdTemp,userTypeTemp);
+      } else {
+        console.log('Here');
+        const temp = await getData('transactions');
+        console.log(temp);
+        if (temp === null) {
+          const {data, error} = await getDataDB('transactions', userIdTemp);
+          if (error) {
+            console.error('Error fetching data:', error.message);
+          } else {
+            setDbData(data);
+            await setData('transactions', data);
+          }
+          return;
+        }
+        setDbData(temp);
+      }
+    } else if (!isConnected && userTypeTemp === 'hybrid') {
+      setDbData(await getData('transactions'));
+    } else {
+      try {
+        const existingLocalData = await getData('transactions');
+        if (existingLocalData === null) {
+          await setData('transactions', []);
+          setDbData([]);
+          return;
+        }
+        setDbData(existingLocalData);
+      } catch (e) {
+        makeToastMessage(e);
+      }
     }
   }
 
   useEffect(() => {
     fetchData();
+    console.log('Refreshed');
     setLoading(false);
   }, []);
 
@@ -84,17 +135,19 @@ const HomeScreen = () => {
 
   const addRecord = async (record, amount) => {
     const isConnected = await checkNetworkConnectivity();
+    var updatedTimeStamp = new Date().toISOString();
     const recordToSave = {
       id: generateRandomId(),
       record: record,
       amount: amount,
+      last_updated: updatedTimeStamp,
     };
     if (isConnected && userType === 'hybrid') {
-      const {status} = await supabase.from('transactions').insert({
+      const status = await addRecordDB({
         user_id: userId,
         record: record,
         amount: amount,
-        last_updated: new Date().toISOString(),
+        last_updated: updatedTimeStamp,
       });
       if (status === 201) {
         const updatedData = await updateData(
@@ -103,37 +156,34 @@ const HomeScreen = () => {
           'add',
         );
         setDbData(updatedData);
+        setData('localTransactionsLastUpdated', updatedTimeStamp);
         return;
       }
+      console.log(status);
       makeToastMessage('There was an error');
       return;
     } else if (!isConnected && userType === 'hybrid') {
-      await addToRequestQueue({
-        requestType: 'add',
-        record: record,
-        amount: amount,
-        last_updated: new Date().toISOString(),
-      });
-      const temp1 = await getData('requestQueue');
-      makeToastMessage(JSON.stringify(temp1));
+      await addToRequestQueue({requestType: 'add', record: recordToSave});
     }
     const updatedData = await updateData('transactions', recordToSave, 'add');
     setDbData(updatedData);
+    return;
   };
 
   const removeRecord = async itemToRemove => {
     if (elementExists(itemToRemove)) {
       const isConnected = await checkNetworkConnectivity();
+      var updatedTimeStamp = new Date().toISOString();
       if (isConnected && userType === 'hybrid') {
-        const {status} = await supabase
-          .from('transactions')
-          .delete()
-          .eq('user_id', userId)
-          .eq('record', itemToRemove);
+        const status = await removeRecordDB(
+          userId,
+          itemToRemove,
+          updatedTimeStamp,
+        );
         if (status === 204) {
           const updatedData = await updateData(
             'transactions',
-            itemToRemove,
+            {record: itemToRemove, last_updated: updatedTimeStamp},
             'remove',
           );
           setDbData(updatedData);
@@ -146,12 +196,12 @@ const HomeScreen = () => {
         await addToRequestQueue({
           requestType: 'remove',
           record: itemToRemove,
-          last_updated: new Date().toISOString(),
+          last_updated: updatedTimeStamp,
         });
       }
       const updatedData = await updateData(
         'transactions',
-        itemToRemove,
+        {record: itemToRemove, last_updated: updatedTimeStamp},
         'remove',
       );
       setDbData(updatedData);
@@ -162,18 +212,22 @@ const HomeScreen = () => {
 
   const modifyRecord = async (itemToModiy, newValue) => {
     if (elementExists(itemToModiy)) {
+      var updatedTimeStamp = new Date().toISOString();
       const isConnected = await checkNetworkConnectivity();
       if (isConnected && userType === 'hybrid') {
-        const {status} = await supabase
-          .from('transactions')
-          .update({amount: newValue})
-          .eq('user_id', userId)
-          .eq('record', itemToModiy);
+        const status = await updateRecordDB(
+          userId,
+          {amount: newValue, last_updated: updatedTimeStamp},
+          itemToModiy,
+        );
         if (status === 204) {
-          makeToastMessage('Modified Item ' + itemToModiy);
           const updatedData = await updateData(
             'transactions',
-            {record: itemToModiy, amount: newValue},
+            {
+              record: itemToModiy,
+              amount: newValue,
+              last_updated: updatedTimeStamp,
+            },
             'modify',
           );
           setDbData(updatedData);
@@ -184,15 +238,15 @@ const HomeScreen = () => {
         return;
       } else if (!isConnected && userType === 'hybrid') {
         await addToRequestQueue({
-          requestType: 'add',
+          requestType: 'modify',
           record: itemToModiy,
           amount: newValue,
-          last_updated: new Date().toISOString(),
+          last_updated: updatedTimeStamp,
         });
       }
       const updatedData = await updateData(
         'transactions',
-        {record: itemToModiy, amount: newValue},
+        {record: itemToModiy, amount: newValue, last_updated: updatedTimeStamp},
         'modify',
       );
       setDbData(updatedData);
@@ -201,10 +255,83 @@ const HomeScreen = () => {
     makeToastMessage('Item not found');
   };
 
-  const handleSyncData = async () => {
+  const handleSyncData = async (userId_,userType_) => {
     const pendingRequests = await getData('requestQueue');
-    makeToastMessage(JSON.stringify(pendingRequests));
+    var modifiedRecords = [
+      ...new Set(
+        pendingRequests
+          .filter(item => item.type !== 'add')
+          .map(item => item.record),
+      ),
+    ];
+    console.log(modifiedRecords, pendingRequests);
+    const isConnected = await checkNetworkConnectivity();
+    var tempData = [];
+    if (isConnected && userType_ === 'hybrid') {
+      if (modifiedRecords.length > 0) {
+        const {data, error} = await supabase
+          .from('transactions')
+          .select('*')
+          .eq('user_id', userId_)
+          .in('record', modifiedRecords);
+        console.log('Line 255', data);
+        var tempData = data;
+        if (error) {
+          console.error('Error fetching data:', error.message);
+          return;
+        }
+      }
+      var lenPendingRequests = pendingRequests.length;
+      for (var i = 0; i < lenPendingRequests; i++) {
+        const curRequest = pendingRequests.shift();
+        console.log('Current Request', curRequest, i);
+        const localLastUpdate = new Date(curRequest.record.last_updated);
+        switch (curRequest.requestType) {
+          case 'add':
+            const status = await addRecordDB({
+              user_id: userId_,
+              record: curRequest.record.record,
+              amount: curRequest.record.amount,
+              last_updated: curRequest.record.last_updated,
+            });
+            console.log(status);
+            break;
+
+          case 'remove':
+            console.log(curRequest.record);
+            await removeRecordDB(
+              userId_,
+              curRequest.record,
+              curRequest.last_updated,
+            );
+            break;
+
+          case 'modify':
+            await updateRecordDB(
+              userId_,
+              {
+                amount: curRequest.amount,
+                last_updated: curRequest.last_updated,
+              },
+              curRequest.record,
+            );
+            break;
+          default:
+            makeToastMessage('Invalid Command');
+            break;
+        }
+      }
+      setData('requestQueue', []);
+    } else {
+      console.log(userId_, pendingRequests);
+      makeToastMessage('Not Conncted to internet');
+    }
   };
+
+  async function checkLocalDBUpdateTime() {
+    const localTransLastUpdated = await getData('localTransactionsLastUpdated');
+    console.log(localTransLastUpdated);
+  }
 
   return (
     <SafeAreaView style={styles.mainContainer}>
@@ -290,8 +417,11 @@ const HomeScreen = () => {
                       ? modifyRecord(recordText, newAmount)
                       : makeToastMessage('Amount should be a number');
                     break;
-                  case 'sync_data':
-                    handleSyncData();
+                  case 'sync':
+                    handleSyncData(userId,userType);
+                    break;
+                  case 'check':
+                    checkLocalDBUpdateTime();
                     break;
                   default:
                     makeToastMessage('Invalid Command');

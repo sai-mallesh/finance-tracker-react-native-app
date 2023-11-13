@@ -47,8 +47,8 @@ export const AsyncStorageDataProvider = ({children}) => {
           makeToastMessage('Added Data : ' + value.record);
           break;
         case 'remove':
-          data = data.filter(item => item.record !== value);
-          makeToastMessage('Removed Data : ' + value);
+          data = data.filter(item => item.record !== value.record);
+          makeToastMessage('Removed Data : ' + value.record);
           break;
         case 'modify':
           var index = data.findIndex(
@@ -59,6 +59,7 @@ export const AsyncStorageDataProvider = ({children}) => {
           break;
       }
       setData(key, data);
+      setData('localTransactionsLastUpdated',value.last_updated);
       return data;
     } catch (error) {
       makeToastMessage(error);

@@ -48,18 +48,15 @@ export const AuthProvider = ({children}) => {
   };
 
   const signOut = async () => {
-    try{
-    const {error} = await supabase.auth.signOut();
-    if (error) {
-      makeToastMessage(error.message);
-      return;
-    }
-    makeToastMessage('Logged Out');
-    await AsyncStorage.removeItem('userSession');
-    await AsyncStorage.removeItem('transactions');
-    await AsyncStorage.removeItem('userId');
-    await AsyncStorage.removeItem('requestQueue');}
-    catch (e){
+    try {
+      const {error} = await supabase.auth.signOut();
+      if (error) {
+        makeToastMessage(error.message);
+        return;
+      }
+      makeToastMessage('Logged Out');
+      await AsyncStorage.clear();
+    } catch (e) {
       console.log(e);
       makeToastMessage(e);
     }
