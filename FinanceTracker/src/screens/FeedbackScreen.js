@@ -1,4 +1,3 @@
-/* eslint-disable prettier/prettier */
 import {
   StyleSheet,
   Text,
@@ -35,7 +34,7 @@ const FeedbackScreen = () => {
   }, []);
 
   const addFeedback = async () => {
-    var formData = {
+    let formData = {
       name: name === '' ? null : name,
       message: userFeedback,
     };

@@ -1,5 +1,4 @@
-/* eslint-disable prettier/prettier */
-import React, {createContext, useContext} from 'react';
+import React, {createContext, useContext, useState} from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import supabase from '../../config/supabaseClient';
 import NetInfo from '@react-native-community/netinfo';
@@ -8,6 +7,7 @@ import {makeToastMessage} from '../Utils';
 const AsyncStorageDataContext = createContext();
 
 export const AsyncStorageDataProvider = ({children}) => {
+  const [spent, setSpent] = useState(0);
   const saveDataToAsyncStorage = async (key, data) => {
     try {
       await AsyncStorage.setItem(key, JSON.stringify(data));
@@ -40,7 +40,7 @@ export const AsyncStorageDataProvider = ({children}) => {
 
   const updateData = async (key, value, type) => {
     try {
-      var data = await getData(key);
+      let data = await getData(key);
       switch (type) {
         case 'add':
           data.push(value);
@@ -51,7 +51,7 @@ export const AsyncStorageDataProvider = ({children}) => {
           makeToastMessage('Removed Data : ' + value.record);
           break;
         case 'modify':
-          var index = data.findIndex(
+          let index = data.findIndex(
             element => element.record === value.record,
           );
           data[index].amount = value.amount;
@@ -59,7 +59,9 @@ export const AsyncStorageDataProvider = ({children}) => {
           break;
       }
       setData(key, data);
-      setData('localTransactionsLastUpdated',value.last_updated);
+      setData('localTransactionsLastUpdated', value.last_updated);
+      const totalAmount = data.reduce((acc, entry) => acc + entry.amount, 0);
+      setSpent(totalAmount);
       return data;
     } catch (error) {
       makeToastMessage(error);
@@ -68,7 +70,7 @@ export const AsyncStorageDataProvider = ({children}) => {
 
   const addToRequestQueue = async value => {
     try {
-      var data = await getData('requestQueue');
+      let data = await getData('requestQueue');
       data.push(value);
       makeToastMessage('Added to request Queue');
       setData('requestQueue', data);
@@ -76,7 +78,6 @@ export const AsyncStorageDataProvider = ({children}) => {
       makeToastMessage(error);
     }
   };
-
 
   const pushDataToSupabase = async () => {
     try {
@@ -90,7 +91,7 @@ export const AsyncStorageDataProvider = ({children}) => {
             .upsert(jsonData);
           if (error) {
             console.error('Error pushing data to Supabase:', error);
-            makeToastMessage('Error pushing data to Supabase:' + error);
+            makeToastMessage('Error pushing data to Supabase:' + error.message);
           } else {
             console.log('Data pushed to Supabase successfully.', response);
             makeToastMessage(
@@ -117,6 +118,8 @@ export const AsyncStorageDataProvider = ({children}) => {
         setData,
         updateData,
         addToRequestQueue,
+        spent,
+        setSpent,
       }}>
       {children}
     </AsyncStorageDataContext.Provider>

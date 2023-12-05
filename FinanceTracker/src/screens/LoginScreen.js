@@ -1,4 +1,3 @@
-/* eslint-disable prettier/prettier */
 import {
   StyleSheet,
   Text,
@@ -17,15 +16,30 @@ import {useAsyncStorageData} from '../providers/AsyncStorageDataProvider';
 const LoginScreen = ({navigation}) => {
   const [email, setEmail] = useState('demo@demo.com');
   const [password, setPassword] = useState('123456');
-  const {getUserSession, setUserSession, setUserData} = useAuth();
-  const {checkNetworkConnectivity,setData} = useAsyncStorageData();
+  const {
+    getUserSession,
+    setUserSession,
+    setUserData,
+    setUserId,
+    setUserType,
+    getUserData,
+  } = useAuth();
+  const {checkNetworkConnectivity, setData} = useAsyncStorageData();
 
   async function changeScreenIfSessionExists() {
-    var temp = await getUserSession();
+    let temp = await getUserSession();
     if (temp !== null) {
-      navigation.navigate('Landing');
+      await setUserIdType();
+      navigation.navigate('PostAuthScreens');
     }
   }
+
+  const setUserIdType = async () => {
+    const userIdTemp = await getUserData('userId');
+    const userTypeTemp = await getUserData('userType');
+    setUserId(userIdTemp);
+    setUserType(userTypeTemp);
+  };
 
   useEffect(() => {
     changeScreenIfSessionExists();
@@ -43,22 +57,22 @@ const LoginScreen = ({navigation}) => {
         makeToastMessage(error.message);
         return;
       }
-      console.log(data);
       setEmail('');
       setPassword('');
       await setUserSession(data);
-      await setData('requestQueue',[]);
+      await setData('requestQueue', []);
       await setUserData('userType', 'hybrid');
-      navigation.navigate('Landing');
+      await setUserIdType();
+      navigation.navigate('PostAuthScreens');
     } else {
       makeToastMessage('You are not connected to internet.');
     }
   }
 
   async function handleSkipLogin() {
-    setUserSession(generateRandomId());
-    setUserData('userType', 'local');
-    navigation.navigate('Landing');
+    await setUserSession(generateRandomId());
+    await setUserData('userType', 'local');
+    navigation.navigate('PostAuthScreens');
   }
   return (
     <SafeAreaView style={styles.mainContainer}>

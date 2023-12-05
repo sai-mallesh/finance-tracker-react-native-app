@@ -1,4 +1,3 @@
-/* eslint-disable prettier/prettier */
 import {
   StyleSheet,
   Text,
@@ -18,8 +17,7 @@ export default function SignUpScreen({navigation}) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const {setUserSession, setUserData} = useAuth();
-  const {checkNetworkConnectivity, setData} =
-    useAsyncStorageData();
+  const {checkNetworkConnectivity, setData} = useAsyncStorageData();
 
   async function handleSignUp() {
     const isConnected = await checkNetworkConnectivity();
@@ -37,9 +35,9 @@ export default function SignUpScreen({navigation}) {
       setEmail('');
       setPassword('');
       await setUserSession(data);
-      await setData('requestQueue',[]);
+      await setData('requestQueue', []);
       await setUserData('userType', 'hybrid');
-      navigation.navigate('Landing');
+      navigation.navigate('Setup Profile');
     } else {
       makeToastMessage('You are not connected to internet.');
     }
@@ -48,7 +46,7 @@ export default function SignUpScreen({navigation}) {
   async function handleSkipLogin() {
     setUserSession(generateRandomId());
     setUserData('userType', 'local');
-    navigation.navigate('Landing');
+    navigation.navigate('PostAuthScreens');
   }
 
   return (
@@ -71,7 +69,9 @@ export default function SignUpScreen({navigation}) {
           value={password}
           onChangeText={setPassword}
         />
-        <TouchableOpacity style={styles.button} onPress={() => handleSignUp()}>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={handleSignUp}>
           <Text style={[styles.loginBtnText]}>Sign Up</Text>
         </TouchableOpacity>
         <Pressable onPress={() => navigation.navigate('Login')}>

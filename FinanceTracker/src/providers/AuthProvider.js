@@ -1,5 +1,4 @@
-/* eslint-disable prettier/prettier */
-import React, {createContext, useContext} from 'react';
+import React, {createContext, useContext, useState} from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import supabase from '../../config/supabaseClient';
 import {makeToastMessage} from '../Utils';
@@ -7,10 +6,12 @@ import {makeToastMessage} from '../Utils';
 const AuthContext = createContext();
 
 export const AuthProvider = ({children}) => {
+  const [userId, setUserId] = useState();
+  const [userType, setUserType] = useState();
   const getUserData = async key => {
     try {
-      const userId = await AsyncStorage.getItem(key);
-      return userId != null ? userId : null;
+      const userId_ = await AsyncStorage.getItem(key);
+      return userId_ != null ? userId_ : null;
     } catch (e) {
       console.log(e);
     }
@@ -38,9 +39,9 @@ export const AuthProvider = ({children}) => {
       const jsonValue = JSON.stringify(value);
       await AsyncStorage.setItem('userSession', jsonValue);
       try {
-        await setUserData('userId', value != null ? value.user.id : '');
+        await setUserData('userId', value != null ? value.user.id : ''); //for hybrid user
       } catch {
-        await setUserData('userId', value);
+        await setUserData('userId', value); //for local user
       }
     } catch (e) {
       console.log(e);
@@ -55,6 +56,8 @@ export const AuthProvider = ({children}) => {
         return;
       }
       makeToastMessage('Logged Out');
+      setUserId('');
+      setUserType('');
       await AsyncStorage.clear();
     } catch (e) {
       console.log(e);
@@ -70,6 +73,10 @@ export const AuthProvider = ({children}) => {
         getUserData,
         setUserData,
         signOut,
+        userId,
+        setUserId,
+        userType,
+        setUserType,
       }}>
       {children}
     </AuthContext.Provider>
