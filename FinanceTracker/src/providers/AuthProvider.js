@@ -8,6 +8,13 @@ const AuthContext = createContext();
 export const AuthProvider = ({children}) => {
   const [userId, setUserId] = useState();
   const [userType, setUserType] = useState();
+  const [userMetadata, setUserMetadata] = useState({
+    name: '',
+    email: '',
+    userId: '',
+    userType: '',
+    currency: '',
+  });
   const getUserData = async key => {
     try {
       const userId_ = await AsyncStorage.getItem(key);
@@ -77,6 +84,8 @@ export const AuthProvider = ({children}) => {
         setUserId,
         userType,
         setUserType,
+        userMetadata,
+        setUserMetadata,
       }}>
       {children}
     </AuthContext.Provider>

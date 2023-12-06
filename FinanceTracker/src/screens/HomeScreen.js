@@ -7,15 +7,23 @@ import AddTransactionFloatingButton from '../components/AddTransactionFloatingBu
 
 const HomeScreen = () => {
   const {spent} = useAsyncStorageData();
-  const {setUserId, setUserType, getUserData} = useAuth();
+  const {setUserId, setUserType, getUserData, userMetadata, setUserMetadata} =
+    useAuth();
   const [greeting, setGreeting] = useState('');
 
   async function fetchData() {
     const userIdTemp = await getUserData('userId');
     const userTypeTemp = await getUserData('userType');
     const userNameTemp = await getUserData('name');
+    const userEmailTemp = await getUserData('email');
     await setUserId(userIdTemp);
     await setUserType(userTypeTemp);
+    setUserMetadata({
+      ...userMetadata,
+      email: userEmailTemp,
+      userId: userIdTemp,
+      userType: userTypeTemp,
+    });
     const currentHour = new Date().getHours();
     if (currentHour >= 0 && currentHour < 12) {
       setGreeting('Good morning! ' + userNameTemp);
@@ -28,15 +36,16 @@ const HomeScreen = () => {
 
   useEffect(() => {
     fetchData();
+    console.log(userMetadata);
   }, []);
 
   return (
     <SafeAreaView style={globalStyles.mainContainer}>
-      <View>
+      <View style={globalStyles.contentContainer}>
         <Text style={styles.text}>{greeting}</Text>
         <Text style={styles.text}>Total amount spent: {spent}</Text>
       </View>
-      <AddTransactionFloatingButton/>
+      <AddTransactionFloatingButton />
     </SafeAreaView>
   );
 };

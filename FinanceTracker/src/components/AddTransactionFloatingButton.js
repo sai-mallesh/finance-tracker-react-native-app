@@ -9,7 +9,7 @@ const AddTransactionFloatingButton = () => {
       style={[styles.buttonFloat,globalStyles.button]}
       onPress={() => console.log('Hello')}>
       <Icon name="plus" size={20} color="#ffffff" />
-      <Text style={[globalStyles.buttonText,globalStyles.text]}>Add Transaction</Text>
+      <Text style={[globalStyles.buttonText,globalStyles.text, globalStyles.iconButton]}>Add Transaction</Text>
     </TouchableOpacity>
   );
 };
@@ -20,6 +20,6 @@ const styles = StyleSheet.create({
   buttonFloat: {
     position: 'absolute',
     bottom: 20,
-    right: 20,
+    right: 10,
   },
 });

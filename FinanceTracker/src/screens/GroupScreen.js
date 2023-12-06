@@ -1,36 +1,24 @@
-import {
-  StyleSheet,
-  Text,
-  View,
-  SafeAreaView,
-  TouchableOpacity,
-} from 'react-native';
-import React, {useEffect} from 'react';
+import {StyleSheet, Text, View, SafeAreaView, Pressable} from 'react-native';
+import React from 'react';
 import {globalStyles} from '../Styles';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
-const GroupScreen = () => {
-  const fetchData = async () => {
-    console.log('Hello');
-  };
-  useEffect(() => {
-    fetchData();
-  }, []);
+const GroupScreen = ({navigation, route}) => {
+  let group_info = route.params.group;
   return (
     <SafeAreaView style={globalStyles.mainContainer}>
-      <View>
-        <TouchableOpacity
-          style={[globalStyles.button, styles.buttonPosition]}
-          onPress={() => console.log('Hello')}>
-          <MaterialCommunityIcons
-            name="account-multiple-plus"
-            color="#ffffff"
-            size={25}
-          />
-          <Text style={[globalStyles.buttonText, globalStyles.text]}>
-            Create a new group
+      <View style={globalStyles.contentContainer}>
+        <View style={styles.headerContainer}>
+          <Text style={[globalStyles.textHeading, globalStyles.text]}>
+            {group_info.group_name}
           </Text>
-        </TouchableOpacity>
+          <Pressable
+            onPress={() =>
+              navigation.navigate('Group', {screen: 'Group Settings', params: {group: group_info}})
+            }>
+            <MaterialCommunityIcons name="cog" color="#ffffff" size={25} />
+          </Pressable>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -39,8 +27,10 @@ const GroupScreen = () => {
 export default GroupScreen;
 
 const styles = StyleSheet.create({
-  buttonPosition: {
-    alignSelf: 'flex-end',
-    marginRight: 10,
+  headerContainer: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
 });

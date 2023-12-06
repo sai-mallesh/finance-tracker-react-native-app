@@ -11,7 +11,15 @@ export const globalStyles = StyleSheet.create({
     justifyContent:'center',
   },
   text:{
-    color:'#ffffff'
+    color:'#ffffff',
+  },
+  containerFlexDirRow:{
+    flexDirection:'row',
+    alignItems:'center',
+  },
+  textHeading:{
+    fontSize:25,
+    fontWeight:'bold',
   },
   shadow:{
     shadowColor: '#ffffff',
@@ -29,8 +37,20 @@ export const globalStyles = StyleSheet.create({
     marginTop: 10,
     flexDirection:'row',
   },
-  buttonText:{
+  iconButton:{
     marginLeft:10,
+  },
+  buttonText:{
     fontWeight:'bold',
+  },
+  container:{
+    width:'100%',
+  },
+  cardLevelOne:{
+    backgroundColor:'#151515',
+    width:'100%',
+    borderRadius:10,
+    padding:10,
+    marginVertical:10,
   },
 });

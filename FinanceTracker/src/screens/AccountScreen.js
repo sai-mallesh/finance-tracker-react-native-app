@@ -22,7 +22,7 @@ const AccountScreen = ({navigation}) => {
   const {signOut, getUserData} = useAuth();
   const {setSpent} = useAsyncStorageData();
   const [name, setName] = useState('');
-  const {userType} = useAuth();
+  const {userType,userMetadata} = useAuth();
 
   const fetchData = async () => {
     let x = await getUserData('name');
@@ -48,7 +48,7 @@ const AccountScreen = ({navigation}) => {
             <Ionicons name="person-circle-sharp" size={size} color="#ffffff" />
             <View style={styles.headerCardText}>
               <Text style={[styles.text, styles.textName]}>{name}</Text>
-              <Text style={styles.text}>email</Text>
+              <Text style={styles.text}>{userMetadata.email}</Text>
             </View>
           </View>
         </TouchableOpacity>

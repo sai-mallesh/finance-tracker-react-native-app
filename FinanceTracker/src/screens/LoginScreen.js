@@ -23,6 +23,8 @@ const LoginScreen = ({navigation}) => {
     setUserId,
     setUserType,
     getUserData,
+    userMetadata,
+    setUserMetadata,
   } = useAuth();
   const {checkNetworkConnectivity, setData} = useAsyncStorageData();
 
@@ -37,8 +39,10 @@ const LoginScreen = ({navigation}) => {
   const setUserIdType = async () => {
     const userIdTemp = await getUserData('userId');
     const userTypeTemp = await getUserData('userType');
+    const userEmailTemp = await getUserData('email');
     setUserId(userIdTemp);
     setUserType(userTypeTemp);
+    setUserMetadata({...userMetadata, email: userEmailTemp, userId:userIdTemp, userType:userTypeTemp});
   };
 
   useEffect(() => {
@@ -62,6 +66,7 @@ const LoginScreen = ({navigation}) => {
       await setUserSession(data);
       await setData('requestQueue', []);
       await setUserData('userType', 'hybrid');
+      await setUserData('email', email);
       await setUserIdType();
       navigation.navigate('PostAuthScreens');
     } else {

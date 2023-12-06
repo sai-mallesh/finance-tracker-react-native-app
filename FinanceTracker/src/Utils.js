@@ -83,3 +83,56 @@ export const addRecordToDB = async (table, record) => {
   const {status} = await supabase.from(table).insert(record);
   return status;
 };
+
+export const getDataFromDB = async (table, userId, columns, primaryKey) => {
+  const response = await supabase
+    .from(table)
+    .select(columns)
+    .eq(primaryKey, userId);
+  return response;
+};
+
+export const inviteMemberToGroup = async (groupId, email) => {
+  try {
+    const {error} = await supabase.rpc('invite_member_to_group', {
+      group_id: groupId,
+      new_member_email: email,
+    });
+
+    if (error) {
+      makeToastMessage(`There was an error while inviting ${email}`);
+    } else {
+      makeToastMessage(`Invitation sent to ${email}`);
+    }
+  } catch (error) {
+    console.error('Unexpected error:', error);
+  }
+};
+
+export const acceptGroupInvite = async (groupId, userId) => {
+  try {
+    let {error} = await supabase.rpc('accept_group_invite', {
+      invite_group_id: groupId,
+      user_id: userId,
+    });
+    if (error) {
+      console.error(error);
+    }
+  } catch (error) {
+    console.error('Unexpected error:', error);
+  }
+};
+
+export const rejectGroupInvite = async (groupId, userId) => {
+  try {
+    let {error} = await supabase.rpc('reject_group_invite', {
+      invite_group_id: groupId,
+      user_id: userId,
+    });
+    if (error) {
+      console.error(error);
+    }
+  } catch (error) {
+    console.error('Unexpected error:', error);
+  }
+};

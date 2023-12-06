@@ -14,7 +14,7 @@ import {addRecordToDB, makeToastMessage} from '../Utils';
 const SetupProfile = ({navigation}) => {
   const [name, setName] = useState('');
   const [currency, setCurrency] = useState('');
-  const {getUserData, setUserData} = useAuth();
+  const {getUserData, setUserData, userMetadata, setUserMetadata} = useAuth();
 
   const handleSubmit = async () => {
     setUserData('name', name);
@@ -26,6 +26,11 @@ const SetupProfile = ({navigation}) => {
       currency: currency,
     });
     if (status === 201) {
+      setUserMetadata({
+        ...userMetadata,
+        name: name,
+        currency: currency,
+      });
       navigation.navigate('PostAuthScreens');
     } else {
       makeToastMessage('There was some error');
@@ -33,7 +38,8 @@ const SetupProfile = ({navigation}) => {
   };
   return (
     <SafeAreaView style={globalStyles.mainContainer}>
-      <View style={[globalStyles.contentContainer,styles.viewContainerPosition]}>
+      <View
+        style={[globalStyles.contentContainer, styles.viewContainerPosition]}>
         <TextInput
           placeholder={'Name'}
           placeholderTextColor="#EEEDED"
@@ -62,8 +68,8 @@ const SetupProfile = ({navigation}) => {
 export default SetupProfile;
 
 const styles = StyleSheet.create({
-  viewContainerPosition:{
-    marginVertical:'50%',
+  viewContainerPosition: {
+    marginVertical: '50%',
   },
   input: {
     height: 40,
