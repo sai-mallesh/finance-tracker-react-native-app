@@ -23,7 +23,7 @@ export const generateRandomId = () => {
 
 export const generateUUID = () => {
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-    var r = (Math.random() * 16) | 0,
+    let r = (Math.random() * 16) | 0,
       v = c === 'x' ? r : (r & 0x3) | 0x8;
     return v.toString(16);
   });
@@ -84,12 +84,26 @@ export const addRecordToDB = async (table, record) => {
   return status;
 };
 
-export const getDataFromDB = async (table, userId, columns, primaryKey) => {
+export const getDataFromDB = async (table, id, columns, primaryKey) => {
   const response = await supabase
     .from(table)
     .select(columns)
-    .eq(primaryKey, userId);
+    .eq(primaryKey, id);
   return response;
+};
+
+export const updateDataInDB = async (table, id, recordToUpdate, primaryKey) => {
+  const {status} = await supabase
+    .from(table)
+    .update(recordToUpdate)
+    .eq(primaryKey, id)
+    .select();
+  return status;
+};
+
+export const deleteDataFromDB = async (table, id, primaryKey) => {
+  const status = await supabase.from(table).delete().eq(primaryKey, id);
+  return status;
 };
 
 export const inviteMemberToGroup = async (groupId, email) => {
@@ -135,4 +149,41 @@ export const rejectGroupInvite = async (groupId, userId) => {
   } catch (error) {
     console.error('Unexpected error:', error);
   }
+};
+
+export const leaveGroup = async (groupId, userId) => {
+  try {
+    let {error} = await supabase.rpc('leave_group', {
+      leave_group_id: groupId,
+      user_id: userId,
+    });
+    if (error) {
+      console.error(error);
+    }
+  } catch (error) {
+    console.error('Unexpected error:', error);
+  }
+};
+
+export const getGroupData = async userId => {
+  let tempGroupData = [];
+  const response_groups = await getDataFromDB(
+    'profile',
+    userId,
+    'groups',
+    'id',
+  );
+  let response_group_id_invite = response_groups.data[0].groups;
+  for (const element of response_group_id_invite) {
+    const response = await getDataFromDB('group', element, '*', 'group_id');
+    const groupData = response.data[0];
+    let temp = [];
+    for (const element1 of groupData.members) {
+      let response_ = await getDataFromDB('profile', element1, 'name', 'id');
+      temp.push(response_.data[0].name);
+    }
+    groupData.memberNames = temp;
+    tempGroupData.push(groupData);
+  }
+  return tempGroupData;
 };

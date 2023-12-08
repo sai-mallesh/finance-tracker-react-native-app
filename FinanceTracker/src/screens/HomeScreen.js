@@ -4,9 +4,10 @@ import React, {useEffect, useState} from 'react';
 import {useAsyncStorageData} from '../providers/AsyncStorageDataProvider';
 import {useAuth} from '../providers/AuthProvider';
 import AddTransactionFloatingButton from '../components/AddTransactionFloatingButton';
+import {getGroupData} from '../Utils';
 
 const HomeScreen = () => {
-  const {spent} = useAsyncStorageData();
+  const {spent, groupsInfo,setGroupsInfo} = useAsyncStorageData();
   const {setUserId, setUserType, getUserData, userMetadata, setUserMetadata} =
     useAuth();
   const [greeting, setGreeting] = useState('');
@@ -24,6 +25,8 @@ const HomeScreen = () => {
       userId: userIdTemp,
       userType: userTypeTemp,
     });
+    const groupData = await getGroupData(userMetadata.userId);
+    setGroupsInfo(groupData);
     const currentHour = new Date().getHours();
     if (currentHour >= 0 && currentHour < 12) {
       setGreeting('Good morning! ' + userNameTemp);
@@ -45,7 +48,7 @@ const HomeScreen = () => {
         <Text style={styles.text}>{greeting}</Text>
         <Text style={styles.text}>Total amount spent: {spent}</Text>
       </View>
-      <AddTransactionFloatingButton />
+      <AddTransactionFloatingButton groupInfo={groupsInfo} fromGroupScreen={false}/>
     </SafeAreaView>
   );
 };

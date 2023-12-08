@@ -11,14 +11,20 @@ import {
 import React, {useEffect, useState} from 'react';
 import {globalStyles} from '../Styles';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import {getDataFromDB, acceptGroupInvite, rejectGroupInvite} from '../Utils';
+import {
+  getDataFromDB,
+  acceptGroupInvite,
+  rejectGroupInvite,
+  getGroupData,
+} from '../Utils';
 import CreateGroupComponent from '../components/CreateGroupComponent';
 import {useAuth} from '../providers/AuthProvider';
+import PropTypes from 'prop-types';
 
-const GroupListScreen = ({navigation}) => {
+const GroupListScreen = ({navigation, route}) => {
   const [groups, setGroups] = useState([]);
   const [groupInvites, setGroupInvites] = useState([]);
-  const [isModalVisible, setModalVisible] = useState(false);
+  const [isModalVisible, setIsModalVisible] = useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -33,12 +39,7 @@ const GroupListScreen = ({navigation}) => {
   const {userMetadata} = useAuth();
 
   const toggleModal = () => {
-    setModalVisible(!isModalVisible);
-  };
-
-  const fetchGroupData = async group_id => {
-    const resp = await getDataFromDB('group', group_id, '*', 'group_id');
-    return resp.data[0];
+    setIsModalVisible(!isModalVisible);
   };
 
   const fetchData = async () => {
@@ -49,28 +50,27 @@ const GroupListScreen = ({navigation}) => {
       'id',
     );
     let response_group_id_invite = response_group_invite.data[0].group_invite;
-    await response_group_id_invite.forEach(async element => {
-      let x = await fetchGroupData(element);
-      setGroupInvites(arr => [...arr, x]);
-    });
-    const response = await getDataFromDB(
-      'profile',
-      userMetadata.userId,
-      'groups',
-      'id',
-    );
-    let response_group_id = response.data[0].groups;
-    await response_group_id.forEach(async element => {
-      let x = await fetchGroupData(element);
-      setGroups(arr => [...arr, x]);
-    });
+
+    let tempInvite = [];
+    for (const element of response_group_id_invite) {
+      const invite = await getDataFromDB('group', element, '*', 'group_id');
+      tempInvite.push(invite.data[0]);
+    }
+    setGroupInvites(tempInvite);
+
+    const data = await getGroupData(userMetadata.userId);
+    setGroups(data);
   };
+
+  if (route.params.rerender === true) {
+    route.params.rerender = false;
+    setLoading(!loading);
+  }
 
   useEffect(() => {
     setGroups([]);
     setGroupInvites([]);
     fetchData();
-    console.log(loading);
   }, [loading]);
 
   const updateGroupInviteList = group => {
@@ -126,10 +126,10 @@ const GroupListScreen = ({navigation}) => {
               </Text>
               <View style={styles.addSpace}>
                 {groupInvites.length > 0 &&
-                  groupInvites.map((group, i) => {
+                  groupInvites.map((group) => {
                     return (
                       <View
-                        key={i}
+                        key={group.group_id}
                         style={[
                           globalStyles.cardLevelOne,
                           globalStyles.containerFlexDirRow,
@@ -188,10 +188,10 @@ const GroupListScreen = ({navigation}) => {
           </Text>
           <View style={styles.addSpace}>
             {groups.length > 0 &&
-              groups.map((group, i) => {
+              groups.map((group) => {
                 return (
                   <Pressable
-                    key={i}
+                    key={group.group_id}
                     onPress={() =>
                       navigation.navigate('Group', {
                         screen: 'Group Screen',
@@ -224,6 +224,11 @@ const GroupListScreen = ({navigation}) => {
   );
 };
 
+GroupListScreen.propTypes = {
+  navigation: PropTypes.object.isRequired,
+  route: PropTypes.object.isRequired,
+};
+
 export default GroupListScreen;
 
 const styles = StyleSheet.create({
@@ -237,7 +242,7 @@ const styles = StyleSheet.create({
   addSpace: {
     marginTop: 10,
   },
-  groupInviteBG:{
-    backgroundColor:'#454545',
+  groupInviteBG: {
+    backgroundColor: '#454545',
   },
 });

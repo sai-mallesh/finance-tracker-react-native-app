@@ -10,7 +10,7 @@ import {
 import React, {useState, useEffect} from 'react';
 import supabase from '../../config/supabaseClient';
 import {useAuth} from '../providers/AuthProvider';
-import {generateRandomId, makeToastMessage} from '../Utils';
+import {generateRandomId, getDataFromDB, makeToastMessage} from '../Utils';
 import {useAsyncStorageData} from '../providers/AsyncStorageDataProvider';
 
 const LoginScreen = ({navigation}) => {
@@ -40,9 +40,24 @@ const LoginScreen = ({navigation}) => {
     const userIdTemp = await getUserData('userId');
     const userTypeTemp = await getUserData('userType');
     const userEmailTemp = await getUserData('email');
+    const tempMetadata = await getDataFromDB(
+      'profile',
+      userIdTemp,
+      'name,currency',
+      'id',
+    );
+    await setUserData('name', tempMetadata.data[0].name);
+    await setUserData('currency', tempMetadata.data[0].currency);
     setUserId(userIdTemp);
     setUserType(userTypeTemp);
-    setUserMetadata({...userMetadata, email: userEmailTemp, userId:userIdTemp, userType:userTypeTemp});
+    setUserMetadata({
+      ...userMetadata,
+      name:tempMetadata.data[0].name,
+      currency:tempMetadata.data[0].currency,
+      email: userEmailTemp,
+      userId: userIdTemp,
+      userType: userTypeTemp,
+    });
   };
 
   useEffect(() => {

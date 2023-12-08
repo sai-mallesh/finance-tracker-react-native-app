@@ -28,6 +28,8 @@ const SetupProfile = ({navigation}) => {
     if (status === 201) {
       setUserMetadata({
         ...userMetadata,
+        userId:userIdTemp,
+        userType:'hybrid',
         name: name,
         currency: currency,
       });

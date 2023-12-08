@@ -16,7 +16,7 @@ import {useAsyncStorageData} from '../providers/AsyncStorageDataProvider';
 export default function SignUpScreen({navigation}) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const {setUserSession, setUserData} = useAuth();
+  const {setUserSession, setUserData,setUserMetadata,userMetadata} = useAuth();
   const {checkNetworkConnectivity, setData} = useAsyncStorageData();
 
   async function handleSignUp() {
@@ -37,6 +37,10 @@ export default function SignUpScreen({navigation}) {
       await setUserSession(data);
       await setData('requestQueue', []);
       await setUserData('userType', 'hybrid');
+      setUserMetadata({
+        ...userMetadata,
+        email:email,
+      });
       navigation.navigate('Setup Profile');
     } else {
       makeToastMessage('You are not connected to internet.');

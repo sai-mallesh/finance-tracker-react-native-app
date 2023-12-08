@@ -15,7 +15,7 @@ const Stack = createNativeStackNavigator();
 
 const GroupStackScreens = () => (
   <Stack.Navigator screenOptions={{headerShown: false}} initialRouteName="Group List">
-    <Stack.Screen name="Group List" component={GroupListScreen} />
+    <Stack.Screen name="Group List" component={GroupListScreen} initialParams={{ rerender: false }} />
     <Stack.Screen name="Group Screen" component={GroupScreen} />
     <Stack.Screen name="Group Settings" component={GroupSettingsScreen}  />
   </Stack.Navigator>

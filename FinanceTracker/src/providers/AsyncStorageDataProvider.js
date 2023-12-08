@@ -8,6 +8,9 @@ const AsyncStorageDataContext = createContext();
 
 export const AsyncStorageDataProvider = ({children}) => {
   const [spent, setSpent] = useState(0);
+
+  const [groupsInfo, setGroupsInfo] = useState([]);
+
   const saveDataToAsyncStorage = async (key, data) => {
     try {
       await AsyncStorage.setItem(key, JSON.stringify(data));
@@ -120,6 +123,8 @@ export const AsyncStorageDataProvider = ({children}) => {
         addToRequestQueue,
         spent,
         setSpent,
+        groupsInfo,
+        setGroupsInfo,
       }}>
       {children}
     </AsyncStorageDataContext.Provider>
