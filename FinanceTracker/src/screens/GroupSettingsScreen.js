@@ -5,11 +5,11 @@ import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityI
 import InvitePeopleToGroupComponent from '../components/InvitePeopleToGroupComponent';
 import EditGroupNameModal from '../components/EditGroupNameModal';
 import {leaveGroup} from '../Utils';
-import {useAuth} from '../providers/AuthProvider';
+import {useAsyncStorageData} from '../providers/AsyncStorageDataProvider';
 
 const GroupSettingsScreen = ({navigation, route}) => {
   let group_info = route.params.group;
-  const {userMetadata} = useAuth();
+  const {userMetadata} = useAsyncStorageData();
   const [isModalVisible, setModalVisible] = useState(false);
   const [isModalVisibleEditName, setModalVisibleEditName] = useState(false);
   const toggleModal = () => {
@@ -18,12 +18,18 @@ const GroupSettingsScreen = ({navigation, route}) => {
 
   const toggleModalEditName = () => {
     setModalVisibleEditName(!isModalVisibleEditName);
-    navigation.navigate('Group', {screen: 'Group List', params:{rerender:true}});
+    navigation.navigate('Group', {
+      screen: 'Group List',
+      params: {rerender: true},
+    });
   };
 
   const handleLeaveGroup = async () => {
     await leaveGroup(group_info.group_id, userMetadata.userId);
-    navigation.navigate('Group', {screen: 'Group List', params:{rerender:true}});
+    navigation.navigate('Group', {
+      screen: 'Group List',
+      params: {rerender: true},
+    });
   };
 
   return (
@@ -34,7 +40,7 @@ const GroupSettingsScreen = ({navigation, route}) => {
         </Text>
         <View style={styles.addSpace}>
           <Pressable
-            onPress={toggleModal}
+            onPress={()=>setModalVisibleEditName(!isModalVisibleEditName)}
             style={[
               styles.headerCard,
               globalStyles.containerFlexDirRow,
@@ -45,19 +51,20 @@ const GroupSettingsScreen = ({navigation, route}) => {
               Edit Group Name
             </Text>
           </Pressable>
-
-          <Pressable
-            onPress={toggleModal}
-            style={[
-              styles.headerCard,
-              globalStyles.containerFlexDirRow,
-              styles.addSpace,
-            ]}>
-            <MaterialCommunityIcons name="plus" size={30} color="#ffffff" />
-            <Text style={[styles.buttonText, globalStyles.text]}>
-              Invite People
-            </Text>
-          </Pressable>
+          {userMetadata.userType === 'hybrid' && (
+            <Pressable
+              onPress={toggleModal}
+              style={[
+                styles.headerCard,
+                globalStyles.containerFlexDirRow,
+                styles.addSpace,
+              ]}>
+              <MaterialCommunityIcons name="plus" size={30} color="#ffffff" />
+              <Text style={[styles.buttonText, globalStyles.text]}>
+                Invite People
+              </Text>
+            </Pressable>
+          )}
           <Pressable
             onPress={handleLeaveGroup}
             style={[

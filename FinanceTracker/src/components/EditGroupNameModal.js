@@ -8,21 +8,30 @@ import {
 } from 'react-native';
 import React, {useState} from 'react';
 import {globalStyles} from '../Styles';
-import {makeToastMessage, updateDataInDB, updateRecordDB} from '../Utils';
-
+import {makeToastMessage, updateRecordDB} from '../Utils';
+import {useAsyncStorageData} from '../providers/AsyncStorageDataProvider';
+import { keys, setObjectDataLocal } from '../AsyncStorageUtils';
 const EditGroupNameModal = ({isVisible, toggleModal, groupInfo}) => {
   const [groupName, setGroupName] = useState(groupInfo.group_name);
+  const {userMetadata, setGroupsInfo} = useAsyncStorageData();
   const handleChangeName = async () => {
-    const status = await updateDataInDB(
-      'group',
-      groupInfo.group_id,
-      {group_name: groupName},
-      'group_id',
-    );
-    if (status === 200) {
-      toggleModal();
+    if (userMetadata.userType === 'hybrid') {
+      const status = await updateRecordDB(
+        'group',
+        groupInfo.group_id,
+        {group_name: groupName},
+        'group_id',
+      );
+      if (status === 200) {
+        toggleModal();
+      } else {
+        makeToastMessage('There was an error updating group name');
+      }
     } else {
-      makeToastMessage('There was an error updating group name');
+      groupInfo.group_name = groupName;
+      await setGroupsInfo(groupInfo);
+      await setObjectDataLocal(keys.GROUPS_LIST,[groupInfo]);
+      toggleModal();
     }
   };
   return (

@@ -2,7 +2,7 @@ import React from 'react';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import HomeScreen from '../screens/HomeScreen';
 import AccountScreen from '../screens/AccountScreen';
-import TransactionScreen from '../screens/TransactionScreen';
+//import TransactionScreen from '../screens/TransactionScreen';
 import GroupScreen from '../screens/GroupScreen';
 import GroupListScreen from '../screens/GroupListScreen';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -56,7 +56,7 @@ const BottomTabNavigator = () => {
       })}>
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Group" component={GroupStackScreens} />
-      <Tab.Screen name="Transaction" component={TransactionScreen} />
+      {/* <Tab.Screen name="Transaction" component={TransactionScreen} /> */}
       <Tab.Screen name="Account" component={AccountScreen} />
     </Tab.Navigator>
   );

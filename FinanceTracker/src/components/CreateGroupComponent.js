@@ -8,24 +8,34 @@ import {
 } from 'react-native';
 import React, {useState} from 'react';
 import {globalStyles} from '../Styles';
-import {addRecordToDB, generateUUID} from '../Utils';
-import {useAuth} from '../providers/AuthProvider';
+import {addRecordDB, generateUUID} from '../Utils';
+import {useAsyncStorageData} from '../providers/AsyncStorageDataProvider';
+import {keys, modifyObjectDataLocal} from '../AsyncStorageUtils';
+import PropTypes from 'prop-types';
 
 const CreateGroupComponent = ({isVisible, toggleModal, setGroups}) => {
   const [groupName, setGroupName] = useState('');
-  const {userMetadata} = useAuth();
-  let record = {
-    group_id: generateUUID(),
-    group_name: groupName,
-    members: [userMetadata.userId],
-  };
+  const {userMetadata,setGroupsInfo} = useAsyncStorageData();
   const handleCreateGroup = async () => {
-    const status = await addRecordToDB('group', record);
-    console.log(status);
-    if (status === 201) {
+    let record = {
+      group_id: generateUUID(),
+      group_name: groupName,
+      members: [userMetadata.userId],
+    };
+    if (userMetadata.userType === 'hybrid') {
+      const status = await addRecordDB('group', record);
+      console.log(status);
+      if (status === 201) {
+        setGroups(prevGroups => [...prevGroups, record]);
+      }
+    } else {
+      record.memberNames = [userMetadata.name];
       setGroups(prevGroups => [...prevGroups, record]);
-      setGroupName('');
+      setGroupsInfo(prevGroups => [...prevGroups, record]);
+      await modifyObjectDataLocal('add',keys.GROUPS_LIST,record);
+      await modifyObjectDataLocal('add',keys.TRANSACTIONS,{[groupName]:[],groupName:groupName});
     }
+    setGroupName('');
     toggleModal();
   };
   return (
@@ -57,6 +67,12 @@ const CreateGroupComponent = ({isVisible, toggleModal, setGroups}) => {
       </View>
     </Modal>
   );
+};
+
+CreateGroupComponent.propTypes = {
+  isVisible: PropTypes.bool.isRequired,
+  toggleModal: PropTypes.func.isRequired,
+  setGroups: PropTypes.func.isRequired,
 };
 
 export default CreateGroupComponent;

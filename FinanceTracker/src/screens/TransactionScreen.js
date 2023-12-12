@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+/*import React, {useState, useEffect} from 'react';
 import {
   SafeAreaView,
   TextInput,
@@ -664,3 +664,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
 });
+*/

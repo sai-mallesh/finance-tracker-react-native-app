@@ -1,13 +1,12 @@
 import {ToastAndroid} from 'react-native';
 import supabase from '../config/supabaseClient';
+import NetInfo from '@react-native-community/netinfo';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export const currency = [
-  {name: 'USD - $', symbol: '$'},
-  {name: 'INR - ₹', symbol: '₹'},
-  {name: 'EURO - €', symbol: '€'},
-  {name: 'POUND - £', symbol: '£'},
-  {name: 'YEN - ¥', symbol: '¥'},
-];
+export const checkNetworkConnectivity = async () => {
+  const state = await NetInfo.fetch();
+  return state.isConnected;
+};
 
 export const makeToastMessage = message => {
   ToastAndroid.showWithGravity(
@@ -15,10 +14,6 @@ export const makeToastMessage = message => {
     ToastAndroid.SHORT,
     ToastAndroid.CENTER,
   );
-};
-
-export const generateRandomId = () => {
-  return Array.from({length: 8}, () => Math.random().toString(36)[2]).join('');
 };
 
 export const generateUUID = () => {
@@ -29,43 +24,30 @@ export const generateUUID = () => {
   });
 };
 
-export const addRecordDB = async recordToAdd => {
-  const {status} = await supabase.from('transactions').insert(recordToAdd);
-  console.log(status, recordToAdd);
+export const addRecordDB = async (table, record) => {
+  const {status} = await supabase.from(table).insert(record);
   return status;
 };
 
-export const removeRecordDB = async (
-  userId,
-  itemToRemove,
-  updatedTimeStamp,
-) => {
-  console.log(itemToRemove);
-  const s = await supabase
-    .from('transactions')
-    .delete()
-    .eq('user_id', userId)
-    .eq('record', itemToRemove);
-  console.log(s, updatedTimeStamp);
+export const removeRecordDB = async (table, id, primaryKey) => {
+  const status = await supabase.from(table).delete().eq(primaryKey, id);
+  return status;
+};
+
+export const updateRecordDB  = async (table, id, recordToUpdate, primaryKey) => {
   const {status} = await supabase
-    .from('user_data_last_refreshed')
-    .update({last_updated_timestamp: updatedTimeStamp})
-    .eq('user_id', userId);
-  console.log(status);
+    .from(table)
+    .update(recordToUpdate)
+    .eq(primaryKey, id)
+    .select();
   return status;
 };
 
-export const updateRecordDB = async (userId, newValue, recordToUpdate) => {
-  const {status} = await supabase
-    .from('transactions')
-    .update(newValue)
-    .eq('user_id', userId)
-    .eq('record', recordToUpdate);
-  return status;
-};
-
-export const getDataDB = async (table, userId) => {
-  const response = await supabase.from(table).select('*').eq('user_id', userId);
+export const getRecordDB  = async (table, id, columns, primaryKey) => {
+  const response = await supabase
+    .from(table)
+    .select(columns)
+    .eq(primaryKey, id);
   return response;
 };
 
@@ -77,33 +59,6 @@ export const getTransactionDataDb = async (userId, record) => {
     .eq('record', record);
   console.log('Response:', response);
   return response;
-};
-
-export const addRecordToDB = async (table, record) => {
-  const {status} = await supabase.from(table).insert(record);
-  return status;
-};
-
-export const getDataFromDB = async (table, id, columns, primaryKey) => {
-  const response = await supabase
-    .from(table)
-    .select(columns)
-    .eq(primaryKey, id);
-  return response;
-};
-
-export const updateDataInDB = async (table, id, recordToUpdate, primaryKey) => {
-  const {status} = await supabase
-    .from(table)
-    .update(recordToUpdate)
-    .eq(primaryKey, id)
-    .select();
-  return status;
-};
-
-export const deleteDataFromDB = async (table, id, primaryKey) => {
-  const status = await supabase.from(table).delete().eq(primaryKey, id);
-  return status;
 };
 
 export const inviteMemberToGroup = async (groupId, email) => {
@@ -167,7 +122,7 @@ export const leaveGroup = async (groupId, userId) => {
 
 export const getGroupData = async userId => {
   let tempGroupData = [];
-  const response_groups = await getDataFromDB(
+  const response_groups = await getRecordDB(
     'profile',
     userId,
     'groups',
@@ -175,15 +130,30 @@ export const getGroupData = async userId => {
   );
   let response_group_id_invite = response_groups.data[0].groups;
   for (const element of response_group_id_invite) {
-    const response = await getDataFromDB('group', element, '*', 'group_id');
+    const response = await getRecordDB('group', element, '*', 'group_id');
     const groupData = response.data[0];
     let temp = [];
     for (const element1 of groupData.members) {
-      let response_ = await getDataFromDB('profile', element1, 'name', 'id');
+      let response_ = await getRecordDB('profile', element1, 'name', 'id');
       temp.push(response_.data[0].name);
     }
     groupData.memberNames = temp;
     tempGroupData.push(groupData);
   }
   return tempGroupData;
+};
+
+export const signOut = async () => {
+  try {
+    const {error} = await supabase.auth.signOut();
+    if (error) {
+      makeToastMessage(error.message);
+      return;
+    }
+    await AsyncStorage.clear();
+    makeToastMessage('Logged Out');
+  } catch (e) {
+    console.log(e);
+    makeToastMessage(e);
+  }
 };

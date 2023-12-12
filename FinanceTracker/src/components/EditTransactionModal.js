@@ -11,7 +11,9 @@ import React, {useEffect, useState} from 'react';
 import {globalStyles} from '../Styles';
 import CurrencyPickerComponent from './CurrencyPickerComponent';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-import {deleteDataFromDB, makeToastMessage, updateDataInDB} from '../Utils';
+import {removeRecordDB, makeToastMessage, updateRecordDB} from '../Utils';
+import {useAsyncStorageData} from '../providers/AsyncStorageDataProvider';
+import {modifyTransactionLocal, getGroupName} from '../AsyncStorageUtils';
 import PropTypes from 'prop-types';
 
 const EditTransactionModal = ({
@@ -32,37 +34,56 @@ const EditTransactionModal = ({
     currency: '',
     last_updated: new Date().toISOString(),
   });
-
+  const {userMetadata} = useAsyncStorageData();
   const handleUpdateTransaction = async () => {
-    const staus = await updateDataInDB(
-      'transactions_sandbox',
-      txnRecord.id,
-      txnRecord,
-      'id',
-    );
-    if (staus === 200) {
-      let index = data.findIndex(element => element.id === txnRecord.id);
-      data[index] = txnRecord;
-      setData(data);
-      toggleModal();
+    if (userMetadata.userType === 'hybrid') {
+      const staus = await updateRecordDB(
+        'transactions_sandbox',
+        txnRecord.id,
+        txnRecord,
+        'id',
+      );
+      if (staus === 200) {
+        let index = data.findIndex(element => element.id === txnRecord.id);
+        data[index] = txnRecord;
+        setData(data);
+        toggleModal();
+      } else {
+        makeToastMessage('There was an error');
+      }
     } else {
-      makeToastMessage('There was an error');
+      const grpName = await getGroupName(txnData.group_id);
+      const temp = await modifyTransactionLocal(
+        'update',
+        grpName,
+        txnData,
+        txnRecord,
+      );
+      setData(temp);
+      toggleModal();
     }
   };
 
   const handleDeleteTransaction = async () => {
-    const {error, status} = await deleteDataFromDB(
-      'transactions_sandbox',
-      txnRecord.id,
-      'id',
-    );
-    if (status === 204) {
-      let temp = data.filter(item => item.id !== txnRecord.id);
+    if (userMetadata.userType === 'hybrid') {
+      const {error, status} = await removeRecordDB(
+        'transactions_sandbox',
+        txnRecord.id,
+        'id',
+      );
+      if (status === 204) {
+        let temp = data.filter(item => item.id !== txnRecord.id);
+        setData(temp);
+        toggleModal();
+      } else {
+        makeToastMessage('There was an error');
+        console.log(error);
+      }
+    } else {
+      const grpName = await getGroupName(txnData.group_id);
+      const temp = await modifyTransactionLocal('del', grpName, txnRecord);
       setData(temp);
       toggleModal();
-    } else {
-      makeToastMessage('There was an error');
-      console.log(error);
     }
   };
   useEffect(() => {
@@ -132,12 +153,12 @@ const EditTransactionModal = ({
 };
 
 EditTransactionModal.propTypes = {
-    isVisible: PropTypes.bool.isRequired,
-    toggleModal: PropTypes.func.isRequired,
-    txnData: PropTypes.object.isRequired,
-    data: PropTypes.array.isRequired,
-    setData:PropTypes.func.isRequired,
-  };
+  isVisible: PropTypes.bool.isRequired,
+  toggleModal: PropTypes.func.isRequired,
+  txnData: PropTypes.object.isRequired,
+  data: PropTypes.array.isRequired,
+  setData: PropTypes.func.isRequired,
+};
 
 export default EditTransactionModal;
 

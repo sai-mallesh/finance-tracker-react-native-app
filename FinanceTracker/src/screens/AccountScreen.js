@@ -7,34 +7,31 @@ import {
   Dimensions,
   TouchableOpacity,
 } from 'react-native';
-import React, {useEffect, useState} from 'react';
-import {useAuth} from '../providers/AuthProvider';
+import React from 'react';
 import {useAsyncStorageData} from '../providers/AsyncStorageDataProvider';
 import {globalStyles} from '../Styles';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Icon from 'react-native-vector-icons/FontAwesome5';
+import {signOut} from '../Utils';
 
-const {width, height} = Dimensions.get('window');
+const {width} = Dimensions.get('window');
 
 const size = width * 0.25;
 
 const AccountScreen = ({navigation}) => {
-  const {signOut, getUserData} = useAuth();
-  const {setSpent} = useAsyncStorageData();
-  const [name, setName] = useState('');
-  const {userType,userMetadata} = useAuth();
+  const {userMetadata, setUserMetadata,setGroupsInfo} = useAsyncStorageData();
 
-  const fetchData = async () => {
-    let x = await getUserData('name');
-    setName(x);
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, []);
   const handleSignout = async () => {
     await signOut();
-    setSpent(null);
+    setUserMetadata({
+      name: '',
+      email: '',
+      userId: '',
+      userType: '',
+      currency: '',
+      spendings: '',
+    });
+    setGroupsInfo([]);
     navigation.navigate('Login');
   };
 
@@ -43,11 +40,13 @@ const AccountScreen = ({navigation}) => {
       <View style={globalStyles.contentContainer}>
         <TouchableOpacity
           onPress={() => console.log('Hello')}
-          style={{width: '100%', height: '20%', marginTop: '10%'}}>
+          style={styles.profileCard}>
           <View style={styles.headerCard}>
             <Ionicons name="person-circle-sharp" size={size} color="#ffffff" />
             <View style={styles.headerCardText}>
-              <Text style={[styles.text, styles.textName]}>{name}</Text>
+              <Text style={[styles.text, styles.textName]}>
+                {userMetadata.name}
+              </Text>
               <Text style={styles.text}>{userMetadata.email}</Text>
             </View>
           </View>
@@ -90,6 +89,11 @@ const AccountScreen = ({navigation}) => {
 export default AccountScreen;
 
 const styles = StyleSheet.create({
+  profileCard: {
+    width: '100%',
+    height: '20%',
+    marginTop: '10%',
+  },
   text: {
     color: '#ffffff',
   },
@@ -110,7 +114,7 @@ const styles = StyleSheet.create({
     marginLeft: 20,
   },
   headerCard: {
-    flexDirection: 'row', // Horizontal layout
+    flexDirection: 'row',
     alignItems: 'center',
     padding: 10,
     justifyContent: 'flex-start',
@@ -121,7 +125,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#151515',
     width: '105%',
     height: '80%',
-    paddingLeft:20,
+    paddingLeft: 20,
     alignItems: 'flex-start',
     justifyContent: 'space-evenly',
   },

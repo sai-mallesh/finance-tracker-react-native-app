@@ -11,9 +11,10 @@ import {globalStyles} from '../Styles';
 import CurrencyPickerComponent from './CurrencyPickerComponent';
 import PropTypes from 'prop-types';
 import TransactionGroupPickerComponent from './TransactionGroupPickerComponent';
-import {addRecordToDB, generateRandomId, generateUUID, makeToastMessage} from '../Utils';
+import {addRecordDB, generateUUID, makeToastMessage} from '../Utils';
 import TransactionPayorPickerComponent from './TransactionPayorPickerComponent';
-
+import {useAsyncStorageData} from '../providers/AsyncStorageDataProvider';
+import {modifyTransactionLocal} from '../AsyncStorageUtils';
 const AddTransactionModal = ({
   isVisible,
   toggleModal,
@@ -33,18 +34,41 @@ const AddTransactionModal = ({
     currency: '',
     last_updated: new Date().toISOString(),
   });
+  const {userMetadata} = useAsyncStorageData();
   const [memberData, setMemberData] = useState([]);
   const [loading, setLoading] = useState(true);
   const handleAddTransaction = async () => {
-    const status = await addRecordToDB('transactions_sandbox', txnRecord);
-    if (status === 201) {
+    if (userMetadata.userType === 'hybrid') {
+      const status = await addRecordDB('transactions_sandbox', txnRecord);
+      if (status === 201) {
+        if (fromGroupScreen === true) {
+          data.push(txnRecord);
+          setRefresh(generateUUID());
+        }
+        toggleModal();
+      } else {
+        makeToastMessage('There was an error');
+      }
+    } else {
       if (fromGroupScreen === true) {
+        await modifyTransactionLocal(
+          'add',
+          groupInfo.group.group_name,
+          txnRecord,
+        );
         data.push(txnRecord);
-        setRefresh(generateRandomId);
+        setRefresh(generateUUID());
+      } else {
+        let grpName = '';
+        for (const element of groupInfo) {
+          if (element.group_id === txnRecord.group_id) {
+            grpName = element.group_name;
+            break;
+          }
+        }
+        await modifyTransactionLocal('add', grpName, txnRecord);
       }
       toggleModal();
-    } else {
-      makeToastMessage('There was an error');
     }
   };
 
@@ -177,7 +201,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent background
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContent: {
     backgroundColor: '#191919',

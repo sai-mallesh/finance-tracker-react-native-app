@@ -7,62 +7,44 @@ import {
   SafeAreaView,
   Pressable,
 } from 'react-native';
-import React, {useState, useEffect} from 'react';
+import React, {useState} from 'react';
 import supabase from '../../config/supabaseClient';
-import {useAuth} from '../providers/AuthProvider';
-import {generateRandomId, getDataFromDB, makeToastMessage} from '../Utils';
+import {
+  checkNetworkConnectivity,
+  getRecordDB,
+  makeToastMessage,
+  getGroupData,
+} from '../Utils';
 import {useAsyncStorageData} from '../providers/AsyncStorageDataProvider';
+import {setDataLocal, keys, setObjectDataLocal} from '../AsyncStorageUtils';
+import PropTypes from 'prop-types';
 
 const LoginScreen = ({navigation}) => {
   const [email, setEmail] = useState('demo@demo.com');
   const [password, setPassword] = useState('123456');
-  const {
-    getUserSession,
-    setUserSession,
-    setUserData,
-    setUserId,
-    setUserType,
-    getUserData,
-    userMetadata,
-    setUserMetadata,
-  } = useAuth();
-  const {checkNetworkConnectivity, setData} = useAsyncStorageData();
+  const {setUserMetadata, userMetadata} = useAsyncStorageData();
+  const {setGroupsInfo} = useAsyncStorageData();
 
-  async function changeScreenIfSessionExists() {
-    let temp = await getUserSession();
-    if (temp !== null) {
-      await setUserIdType();
-      navigation.navigate('PostAuthScreens');
-    }
-  }
-
-  const setUserIdType = async () => {
-    const userIdTemp = await getUserData('userId');
-    const userTypeTemp = await getUserData('userType');
-    const userEmailTemp = await getUserData('email');
-    const tempMetadata = await getDataFromDB(
+  const setUserDataInAsyncStorage = async userId => {
+    const tempMetadata = await getRecordDB(
       'profile',
-      userIdTemp,
+      userId,
       'name,currency',
       'id',
     );
-    await setUserData('name', tempMetadata.data[0].name);
-    await setUserData('currency', tempMetadata.data[0].currency);
-    setUserId(userIdTemp);
-    setUserType(userTypeTemp);
-    setUserMetadata({
+    const value = {
       ...userMetadata,
-      name:tempMetadata.data[0].name,
-      currency:tempMetadata.data[0].currency,
-      email: userEmailTemp,
-      userId: userIdTemp,
-      userType: userTypeTemp,
-    });
+      name: tempMetadata.data[0].name,
+      currency: tempMetadata.data[0].currency,
+      email: email,
+      userId: userId,
+      userType: 'hybrid',
+    };
+    setUserMetadata(value);
+    setObjectDataLocal(keys.USER_METADATA, value);
+    await setDataLocal(keys.SESSION_EXISTS, 'true');
+    navigation.navigate('PostAuthScreens');
   };
-
-  useEffect(() => {
-    changeScreenIfSessionExists();
-  }, []);
 
   async function handleLogin() {
     const isConnected = await checkNetworkConnectivity();
@@ -76,23 +58,19 @@ const LoginScreen = ({navigation}) => {
         makeToastMessage(error.message);
         return;
       }
+      const grpData = await getGroupData(data.session.user.id);
+      setGroupsInfo(grpData);
+      await setUserDataInAsyncStorage(data.session.user.id);
       setEmail('');
       setPassword('');
-      await setUserSession(data);
-      await setData('requestQueue', []);
-      await setUserData('userType', 'hybrid');
-      await setUserData('email', email);
-      await setUserIdType();
-      navigation.navigate('PostAuthScreens');
     } else {
       makeToastMessage('You are not connected to internet.');
     }
   }
 
   async function handleSkipLogin() {
-    await setUserSession(generateRandomId());
-    await setUserData('userType', 'local');
-    navigation.navigate('PostAuthScreens');
+    setUserMetadata({...userMetadata, userType: 'local'});
+    navigation.navigate('Setup Profile');
   }
   return (
     <SafeAreaView style={styles.mainContainer}>
@@ -133,6 +111,10 @@ const LoginScreen = ({navigation}) => {
       </View>
     </SafeAreaView>
   );
+};
+
+LoginScreen.propTypes = {
+  navigation: PropTypes.object.isRequired,
 };
 
 export default LoginScreen;

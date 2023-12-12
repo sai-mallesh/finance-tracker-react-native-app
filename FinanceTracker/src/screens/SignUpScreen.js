@@ -9,15 +9,15 @@ import {
 } from 'react-native';
 import React, {useState} from 'react';
 import supabase from '../../config/supabaseClient';
-import {useAuth} from '../providers/AuthProvider';
-import {makeToastMessage, generateRandomId} from '../Utils';
+import {checkNetworkConnectivity, makeToastMessage} from '../Utils';
 import {useAsyncStorageData} from '../providers/AsyncStorageDataProvider';
+import PropTypes from 'prop-types';
+import {setObjectDataLocal, keys,setDataLocal} from '../AsyncStorageUtils';
 
-export default function SignUpScreen({navigation}) {
+const SignUpScreen = ({navigation}) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const {setUserSession, setUserData,setUserMetadata,userMetadata} = useAuth();
-  const {checkNetworkConnectivity, setData} = useAsyncStorageData();
+  const {userMetadata,setUserMetadata} = useAsyncStorageData();
 
   async function handleSignUp() {
     const isConnected = await checkNetworkConnectivity();
@@ -31,16 +31,17 @@ export default function SignUpScreen({navigation}) {
         makeToastMessage(error.message);
         return;
       }
-      console.log(data);
       setEmail('');
       setPassword('');
-      await setUserSession(data);
-      await setData('requestQueue', []);
-      await setUserData('userType', 'hybrid');
-      setUserMetadata({
+      const value = {
         ...userMetadata,
-        email:email,
-      });
+        email: email,
+        userId: data.session.user.id,
+        userType: 'hybrid',
+      };
+      setUserMetadata(value);
+      await setObjectDataLocal(keys.USER_METADATA, value);
+      await setDataLocal(keys.SESSION_EXISTS, 'true');
       navigation.navigate('Setup Profile');
     } else {
       makeToastMessage('You are not connected to internet.');
@@ -48,9 +49,8 @@ export default function SignUpScreen({navigation}) {
   }
 
   async function handleSkipLogin() {
-    setUserSession(generateRandomId());
-    setUserData('userType', 'local');
-    navigation.navigate('PostAuthScreens');
+    setUserMetadata({...userMetadata, userType: 'local'});
+    navigation.navigate('Setup Profile');
   }
 
   return (
@@ -73,9 +73,7 @@ export default function SignUpScreen({navigation}) {
           value={password}
           onChangeText={setPassword}
         />
-        <TouchableOpacity
-          style={styles.button}
-          onPress={handleSignUp}>
+        <TouchableOpacity style={styles.button} onPress={handleSignUp}>
           <Text style={[styles.loginBtnText]}>Sign Up</Text>
         </TouchableOpacity>
         <Pressable onPress={() => navigation.navigate('Login')}>
@@ -90,7 +88,13 @@ export default function SignUpScreen({navigation}) {
       </View>
     </SafeAreaView>
   );
-}
+};
+
+SignUpScreen.propTypes = {
+  navigation: PropTypes.object.isRequired,
+};
+
+export default SignUpScreen;
 
 const styles = StyleSheet.create({
   mainContainer: {

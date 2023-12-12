@@ -8,34 +8,82 @@ import {
 } from 'react-native';
 import React, {useState} from 'react';
 import {globalStyles} from '../Styles';
-import {useAuth} from '../providers/AuthProvider';
-import {addRecordToDB, makeToastMessage} from '../Utils';
+import {
+  addRecordDB,
+  generateUUID,
+  makeToastMessage,
+  getGroupData,
+} from '../Utils';
+import PropTypes from 'prop-types';
+import {useAsyncStorageData} from '../providers/AsyncStorageDataProvider';
+import {setObjectDataLocal, keys, setDataLocal} from '../AsyncStorageUtils';
 
 const SetupProfile = ({navigation}) => {
   const [name, setName] = useState('');
   const [currency, setCurrency] = useState('');
-  const {getUserData, setUserData, userMetadata, setUserMetadata} = useAuth();
+  const {userMetadata, setUserMetadata, setGroupsInfo} = useAsyncStorageData();
 
   const handleSubmit = async () => {
-    setUserData('name', name);
-    setUserData('currency', currency);
-    const userIdTemp = await getUserData('userId');
-    const status = await addRecordToDB('profile', {
-      id: userIdTemp,
-      name: name,
-      currency: currency,
-    });
-    if (status === 201) {
-      setUserMetadata({
-        ...userMetadata,
-        userId:userIdTemp,
-        userType:'hybrid',
+    if (userMetadata.userType === 'hybrid') {
+      const status = await addRecordDB('profile', {
+        id: userMetadata.userId,
         name: name,
         currency: currency,
       });
-      navigation.navigate('PostAuthScreens');
+      if (status === 201) {
+        await setUserMetadata(prevState => ({
+          ...prevState,
+          userId: userMetadata.userId,
+          name: name,
+          currency: currency,
+        }));
+        await setObjectDataLocal(keys.USER_METADATA, {
+          name: name,
+          email: userMetadata.email,
+          userId: userMetadata.userId,
+          userType: userMetadata.userType,
+          currency: currency,
+          spendings: 0,
+        });
+        const grpData = await getGroupData(userMetadata.userId);
+        setGroupsInfo(grpData);
+        console.log(grpData);
+        await setObjectDataLocal(keys.GROUPS_LIST,grpData);
+        navigation.navigate('PostAuthScreens');
+      } else {
+        makeToastMessage('There was some error');
+      }
     } else {
-      makeToastMessage('There was some error');
+      let userId = generateUUID();
+      await setUserMetadata(prevState => ({
+        ...prevState,
+        userId: userId,
+        name: name,
+        currency: currency,
+      }));
+      setObjectDataLocal(keys.USER_METADATA, {
+        name: name,
+        email: userMetadata.email,
+        userId: userId,
+        userType: userMetadata.userType,
+        currency: currency,
+        spendings: 0,
+      });
+      const grp = [
+        {
+          group_id: generateUUID(),
+          group_name: 'Personal',
+          members: [userId],
+          memberNames: [name],
+        },
+      ];
+      await setObjectDataLocal(keys.GROUPS_LIST, grp);
+      await setObjectDataLocal(keys.TRANSACTIONS, [
+        {Personal: [], groupName: 'Personal'},
+      ]);
+      await setGroupsInfo(grp);
+      await setDataLocal(keys.SESSION_EXISTS, 'true');
+      navigation.navigate('PostAuthScreens');
     }
   };
   return (
@@ -65,6 +113,10 @@ const SetupProfile = ({navigation}) => {
       </View>
     </SafeAreaView>
   );
+};
+
+SetupProfile.propTypes = {
+  navigation: PropTypes.object.isRequired,
 };
 
 export default SetupProfile;

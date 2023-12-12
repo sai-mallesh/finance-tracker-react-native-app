@@ -12,14 +12,15 @@ import React, {useEffect, useState} from 'react';
 import {globalStyles} from '../Styles';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import {
-  getDataFromDB,
+  getRecordDB,
   acceptGroupInvite,
   rejectGroupInvite,
   getGroupData,
 } from '../Utils';
 import CreateGroupComponent from '../components/CreateGroupComponent';
-import {useAuth} from '../providers/AuthProvider';
 import PropTypes from 'prop-types';
+import {useAsyncStorageData} from '../providers/AsyncStorageDataProvider';
+import {getObjectDataLocal, keys} from '../AsyncStorageUtils';
 
 const GroupListScreen = ({navigation, route}) => {
   const [groups, setGroups] = useState([]);
@@ -27,6 +28,7 @@ const GroupListScreen = ({navigation, route}) => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
   const [loading, setLoading] = useState(false);
+  const {setGroupsInfo} = useAsyncStorageData();
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -36,30 +38,38 @@ const GroupListScreen = ({navigation, route}) => {
     setLoading(!loading);
   };
 
-  const {userMetadata} = useAuth();
+  const {userMetadata} = useAsyncStorageData();
 
   const toggleModal = () => {
     setIsModalVisible(!isModalVisible);
   };
 
   const fetchData = async () => {
-    const response_group_invite = await getDataFromDB(
-      'profile',
-      userMetadata.userId,
-      'group_invite',
-      'id',
-    );
-    let response_group_id_invite = response_group_invite.data[0].group_invite;
+    if (userMetadata.userType === 'hybrid') {
+      const response_group_invite = await getRecordDB(
+        'profile',
+        userMetadata.userId,
+        'group_invite',
+        'id',
+      );
+      let response_group_id_invite = response_group_invite.data[0].group_invite;
+      let tempInvite = [];
+      if (response_group_id_invite !== null) {
+        for (const element of response_group_id_invite) {
+          const invite = await getRecordDB('group', element, '*', 'group_id');
+          tempInvite.push(invite.data[0]);
+        }
+      }
+      setGroupInvites(tempInvite);
 
-    let tempInvite = [];
-    for (const element of response_group_id_invite) {
-      const invite = await getDataFromDB('group', element, '*', 'group_id');
-      tempInvite.push(invite.data[0]);
+      const data = await getGroupData(userMetadata.userId);
+      setGroups(data);
+      setGroupsInfo(data);
+    } else {
+      const data = await getObjectDataLocal(keys.GROUPS_LIST);
+      setGroups(data);
+      setGroupsInfo(data);
     }
-    setGroupInvites(tempInvite);
-
-    const data = await getGroupData(userMetadata.userId);
-    setGroups(data);
   };
 
   if (route.params.rerender === true) {
@@ -114,7 +124,7 @@ const GroupListScreen = ({navigation, route}) => {
               Create a new group
             </Text>
           </TouchableOpacity>
-          {groupInvites.length > 0 && (
+          {groupInvites.length > 0 && userMetadata.userType === 'hybrid' && (
             <>
               <Text
                 style={[
@@ -126,7 +136,7 @@ const GroupListScreen = ({navigation, route}) => {
               </Text>
               <View style={styles.addSpace}>
                 {groupInvites.length > 0 &&
-                  groupInvites.map((group) => {
+                  groupInvites.map(group => {
                     return (
                       <View
                         key={group.group_id}
@@ -188,7 +198,7 @@ const GroupListScreen = ({navigation, route}) => {
           </Text>
           <View style={styles.addSpace}>
             {groups.length > 0 &&
-              groups.map((group) => {
+              groups.map(group => {
                 return (
                   <Pressable
                     key={group.group_id}
@@ -203,11 +213,13 @@ const GroupListScreen = ({navigation, route}) => {
                         style={[globalStyles.text, globalStyles.textHeading]}>
                         {group.group_name}
                       </Text>
-                      <Text style={globalStyles.text}>
-                        {group.group_name !== 'personal'
-                          ? `No. of Members: ${group.members.length}`
-                          : ''}
-                      </Text>
+                      {userMetadata.userType === 'hybrid' && (
+                        <Text style={globalStyles.text}>
+                          {group.group_name !== 'Personal'
+                            ? `No. of Members: ${group.members.length}`
+                            : ''}
+                        </Text>
+                      )}
                     </View>
                   </Pressable>
                 );
